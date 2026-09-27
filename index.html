@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="خرج‌یار">
+<title>خرج‌یار — دفتر هزینه‌ها</title>
+<style>
+  :root{--bg:#f5f6f8;--card:#fff;--accent:#e8722a;--accent2:#2a7de8;--green:#2e9e5b;--text:#1c1e21;--muted:#888;}
+  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,"Vazirmatn",Tahoma,sans-serif;}
+  body{background:var(--bg);color:var(--text);padding-bottom:90px;-webkit-touch-callout:none;}
+  header{background:var(--accent);color:#fff;padding:16px;display:flex;justify-content:space-between;align-items:center;}
+  header h1{font-size:18px;}
+  #syncDot{font-size:12px;opacity:.9;}
+  .tabs{display:flex;gap:8px;overflow-x:auto;padding:10px 12px;background:var(--card);border-bottom:1px solid #e5e5e5;}
+  .tab{padding:8px 14px;border-radius:20px;background:#eee;white-space:nowrap;border:none;font-size:14px;-webkit-user-select:none;user-select:none;}
+  .tab.active{background:var(--accent);color:#fff;}
+  main{padding:12px;}
+  .card{background:var(--card);border-radius:14px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:12px;}
+  table{width:100%;border-collapse:collapse;font-size:14px;}
+  th{color:var(--muted);font-weight:600;text-align:right;padding:6px 4px;border-bottom:1px solid #eee;font-size:12px;}
+  td{padding:8px 4px;border-bottom:1px solid #f2f2f2;vertical-align:middle;}
+  td input{width:100%;border:none;background:transparent;font-size:14px;text-align:right;}
+  td input:focus{outline:2px solid var(--accent);border-radius:6px;padding:2px;}
+  .amount{text-align:left;font-variant-numeric:tabular-nums;}
+  .rowdel{color:#e05252;background:none;border:none;font-size:16px;}
+  .total{display:flex;justify-content:space-between;font-size:16px;font-weight:700;}
+  .total span:last-child{color:var(--accent);}
+  .btn{display:block;width:100%;padding:12px;margin-top:8px;border:none;border-radius:12px;font-size:15px;background:#eee;color:var(--text);}
+  .btn.primary{background:var(--accent);color:#fff;}
+  .btn.blue{background:var(--accent2);color:#fff;}
+  .toolbar{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .menu{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid #e5e5e5;display:flex;justify-content:space-around;padding:10px 4px;padding-bottom:calc(10px + env(safe-area-inset-bottom));}
+  .menu button{background:none;border:none;font-size:11px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px;}
+  .menu button .ic{font-size:20px;}
+  .menu button.on{color:var(--accent);}
+  .hidden{display:none;}
+  #toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;opacity:0;transition:.3s;pointer-events:none;z-index:9;max-width:85%;text-align:center;}
+  #toast.show{opacity:1;}
+  dialog{border:none;border-radius:16px;padding:20px;max-width:320px;width:90%;}
+  dialog::backdrop{background:rgba(0,0,0,.4);}
+  dialog input{width:100%;padding:10px;margin:10px 0;border:1px solid #ddd;border-radius:10px;font-size:15px;text-align:center;}
+  #ctxMenu{position:fixed;z-index:20;background:var(--card);border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,.18);overflow:hidden;min-width:170px;}
+  #ctxMenu button{display:block;width:100%;padding:13px 18px;border:none;background:none;font-size:14px;text-align:right;color:var(--text);}
+  #ctxMenu button:active{background:#f2f2f2;}
+  #ctxMenu button.danger{color:#e05252;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📒 خرج‌یار</h1>
+  <span id="syncDot">● در حال اتصال…</span>
+</header>
+
+<div class="tabs" id="tabs"></div>
+
+<main>
+  <section id="page-expense">
+    <div class="card">
+      <table>
+        <thead><tr><th style="width:32px">#</th><th>موضوع</th><th style="width:100px">هزینه (تومان)</th><th style="width:110px">تاریخ</th><th style="width:30px"></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <button class="btn" onclick="addRow()">＋ افزودن ردیف</button>
+    </div>
+    <div class="card total">
+      <span>جمع کل این ماه:</span><span id="total">۰ تومان</span>
+    </div>
+    <div class="card toolbar">
+      <button class="btn primary" onclick="window.print()">🖨️ پرینت / PDF</button>
+      <button class="btn blue" onclick="shareMonth()">📤 اشتراک‌گذاری ماه</button>
+    </div>
+  </section>
+
+  <section id="page-summary" class="hidden">
+    <div class="card">
+      <h3 style="margin-bottom:10px;">خلاصه همه ماه‌ها</h3>
+      <table><thead><tr><th>ماه</th><th style="width:110px">جمع (تومان)</th><th style="width:70px">تعداد</th></tr></thead><tbody id="summaryRows"></tbody></table>
+      <div class="total" style="margin-top:12px;border-top:2px solid #eee;padding-top:10px;"><span>جمع کل:</span><span id="grandTotal"></span></div>
+    </div>
+  </section>
+
+  <section id="page-settings" class="hidden">
+    <div class="card">
+      <h3 style="margin-bottom:6px;">🔌 اتصال به دیتابیس (Supabase)</h3>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:8px;">Project URL و anon key را از Settings ← API پنل Supabase کپی و اینجا وارد کنید. هر دو نفر باید همین مقادیر را وارد کنند.</p>
+      <input id="sbUrl" placeholder="https://xxxx.supabase.co" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;font-size:14px;text-align:left;direction:ltr;margin-bottom:8px;">
+      <input id="sbKey" placeholder="anon public key" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;font-size:12px;text-align:left;direction:ltr;margin-bottom:8px;">
+      <button class="btn green" onclick="connectSB()" style="background:var(--green);color:#fff;">🔗 اتصال و ذخیره</button>
+      <p id="sbStatus" style="font-size:13px;margin-top:8px;color:var(--muted);"></p>
+    </div>
+    <div class="card">
+      <h3 style="margin-bottom:6px;">پشتیبان‌گیری</h3>
+      <button class="btn blue" onclick="exportData()">💾 خروجی کل داده‌ها</button>
+      <button class="btn" onclick="exportCSV()">📄 خروجی اکسل (CSV)</button>
+    </div>
+    <div class="card" style="font-size:12px;color:var(--muted);text-align:center;">
+      خرج‌یار — نسخه ۳.۰ — دیتابیس Supabase<br>
+      💡 برای تغییر نام یا حذف ماه: لمس طولانی (یا کلیک راست) روی تب ماه
+    </div>
+  </section>
+</main>
+
+<nav class="menu">
+  <button class="on" id="m-expense" onclick="goPage('expense')"><span class="ic">🧾</span>هزینه‌ها</button>
+  <button id="m-summary" onclick="goPage('summary')"><span class="ic">📊</span>خلاصه</button>
+  <button id="m-settings" onclick="goPage('settings')"><span class="ic">⚙️</span>تنظیمات</button>
+</nav>
+
+<dialog id="dlg">
+  <h3 id="dlgTitle" style="text-align:center;">ماه جدید</h3>
+  <input id="monthName" placeholder="مثلاً: مهر ۱۴۰۵">
+  <div style="display:flex;gap:8px;">
+    <button class="btn primary" onclick="dlgOk()">تأیید</button>
+    <button class="btn" onclick="dlg.close()">انصراف</button>
+  </div>
+</dialog>
+
+<div id="ctxMenu" class="hidden"></div>
+<div id="toast"></div>
+<div id="printHeader" style="display:none;text-align:center;padding:20px;"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ⬇️⬇️ این دو خط را با مقادیر خودت پر کن ⬇️⬇️
+const SUPABASE_URL = 'https://YOUR-PROJECT.supabase.co';
+const SUPABASE_ANON_KEY = 'YOUR-ANON-KEY';
+// ⬆️⬆️ فقط همین دو خط، بقیه را دست نزن ⬆️⬆️
+
+let sb=null, channel=null;
+let months=[];           // [{name, rows:[{id,subject,amount,date}]}]
+let current=0, page='expense';
+let ctxIndex=-1, longPressTimer=null, longPressFired=false;
+const fa=n=>String(n).replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d]);
+const money=n=>Number(n||0).toLocaleString('fa-IR');
+const cur=()=>months[current]||months[0];
+const toast=t=>{const el=document.getElementById('toast');el.textContent=t;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500);};
+function setDot(s){
+  const d=document.getElementById('syncDot');
+  if(s==='ok'){d.textContent='🟢 سینک فعال';d.style.color='#c8ffd8';}
+  else if(s==='err'){d.textContent='🟠 خطای اتصال';d.style.color='#ffe0b0';}
+  else if(s==='off'){d.textContent='● فقط محلی';d.style.color='rgba(255,255,255,.7)';}
+}
+
+// ---------- data rebuild from flat table ----------
+function rebuild(rows){
+  const map=new Map();
+  (rows||[]).forEach(r=>{
+    if(!map.has(r.month))map.set(r.month,[]);
+    map.get(r.month).push({id:r.id,subject:r.subject,amount:Number(r.amount),date:r.date});
+  });
+  months=[...map.entries()].map(([name,rs])=>({name,rows:rs}));
+  if(!months.length)months=[{name:'ماه اول',rows:[]}];
+  if(current>=months.length)current=0;
+}
+function allFlat(){return months.flatMap(m=>m.rows.map(r=>({month:m.name,...r})));}
+const byId=id=>{for(const m of months){const r=m.rows.find(x=>x.id===id);if(r)return{row:r,month:m};}return null;};
+
+// ---------- Supabase ----------
+async function connectSB(){
+  if(SUPABASE_URL.includes('YOUR-PROJECT')||SUPABASE_ANON_KEY.includes('YOUR-ANON')){
+    document.getElementById('sbStatus').textContent='⚠️ ابتدا URL و anon key را بالای فایل جایگزین کن (مرحله ۴ راهنما)';
+    setDot('off');return;
+  }
+  try{
+    sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+    const {data,error}=await sb.from('expenses').select('*').order('created_at',{ascending:true});
+    if(error)throw error;
+    rebuild(data);
+    render();
+    setDot('ok');
+    document.getElementById('sbStatus').textContent='✅ متصل — تغییرات هر دو نفر لحظه‌ای مشترک است';
+    // realtime
+    if(channel)channel.unsubscribe();
+    channel=sb.channel('kharj-yar');
+    channel.on('postgres_changes',{event:'*',schema:'public',table:'expenses'},async()=>{
+      const {data}=await sb.from('expenses').select('*').order('created_at',{ascending:true});
+      rebuild(data);render();
+    }).subscribe();
+  }catch(e){
+    setDot('err');
+    document.getElementById('sbStatus').textContent='❌ خطا: '+(e.message||e);
+  }
+}
+
+// ---------- CRUD (each change goes straight to DB) ----------
+async function dbInsert(month,row){
+  if(!sb)return;
+  const {data,error}=await sb.from('expenses').insert({month,subject:row.subject,amount:row.amount,date:row.date}).select().single();
+  if(error){toast('خطای ذخیره: '+error.message);return;}
+  row.id=data.id;
+}
+async function dbUpdate(row){
+  if(!sb||!row.id)return;
+  const {error}=await sb.from('expenses').update({subject:row.subject,amount:row.amount,date:row.date}).eq('id',row.id);
+  if(error)toast('خطای ویرایش: '+error.message);
+}
+async function dbDelete(id){
+  if(!sb||!id)return;
+  const {error}=await sb.from('expenses').delete().eq('id',id);
+  if(error)toast('خطای حذف: '+error.message);
+}
+
+// ---------- UI ----------
+function render(){
+  const tb=document.getElementById('tabs');tb.innerHTML='';
+  months.forEach((m,i)=>{
+    const b=document.createElement('button');b.className='tab'+(i===current?' active':'');
+    b.textContent=fa(m.name);
+    b.addEventListener('click',()=>{if(longPressFired)return;current=i;render();});
+    b.addEventListener('touchstart',e=>{
+      longPressFired=false;const t=e.touches[0];
+      longPressTimer=setTimeout(()=>{longPressFired=true;showCtx(i,t.clientX,t.clientY);},500);
+    },{passive:true});
+    b.addEventListener('touchend',()=>clearTimeout(longPressTimer));
+    b.addEventListener('touchmove',()=>clearTimeout(longPressTimer));
+    b.addEventListener('contextmenu',e=>{e.preventDefault();showCtx(i,e.clientX,e.clientY);});
+    tb.appendChild(b);
+  });
+  const add=document.createElement('button');add.className='tab';add.textContent='＋ ماه جدید';
+  add.onclick=()=>{document.getElementById('dlgTitle').textContent='ماه جدید';document.getElementById('monthName').value='';dlg.dataset.mode='new';dlg.showModal();setTimeout(()=>document.getElementById('monthName').focus(),100);};
+  tb.appendChild(add);
+
+  const r=document.getElementById('rows');r.innerHTML='';
+  cur().rows.forEach((row,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td style="color:#bbb">${fa(i+1)}</td>
+      <td><input value="${(row.subject||'').replace(/"/g,'&quot;')}" placeholder="موضوع" oninput="editRow('${row.id}','subject',this.value)"></td>
+      <td class="amount"><input type="number" inputmode="decimal" value="${row.amount||''}" placeholder="۰" oninput="editRow('${row.id}','amount',this.value)"></td>
+      <td><input value="${row.date||''}" placeholder="۱۴۰۵/۰۷/۰۱" oninput="editRow('${row.id}','date',this.value)"></td>
+      <td><button class="rowdel" onclick="delRow('${row.id}')">✕</button></td>`;
+    r.appendChild(tr);
+  });
+  updateTotal();
+  renderSummary();
+}
+let editTimers={};
+function editRow(id,k,v){
+  const f=byId(id);if(!f)return;
+  f.row[k]=k==='amount'?Number(v||0):v;
+  updateTotal();
+  clearTimeout(editTimers[id+k]);
+  editTimers[id+k]=setTimeout(()=>dbUpdate(f.row),400);
+}
+function updateTotal(){
+  const t=cur().rows.reduce((s,x)=>s+Number(x.amount||0),0);
+  document.getElementById('total').textContent=money(t)+' تومان';
+  renderSummary();
+}
+async function addRow(){
+  const row={id:null,subject:'',amount:'',date:''};
+  cur().rows.push(row);render();
+  setTimeout(()=>{const ins=document.querySelectorAll('#rows tr:last-child input');if(ins[1])ins[1].focus();},50);
+  await dbInsert(cur().name,row);render();
+}
+async function delRow(id){
+  const f=byId(id);if(!f)return;
+  f.month.rows=f.month.rows.filter(x=>x.id!==id);
+  render();await dbDelete(id);
+}
+function renderSummary(){
+  const sr=document.getElementById('summaryRows');if(!sr)return;sr.innerHTML='';
+  let g=0;
+  months.forEach(m=>{const t=m.rows.reduce((s,x)=>s+Number(x.amount||0),0);g+=t;
+    sr.insertAdjacentHTML('beforeend',`<tr><td>${fa(m.name)}</td><td class="amount">${money(t)}</td><td class="amount">${fa(m.rows.length)}</td></tr>`);});
+  document.getElementById('grandTotal').textContent=money(g)+' تومان';
+}
+function goPage(p){page=p;['expense','summary','settings'].forEach(x=>{
+  document.getElementById('page-'+x).classList.toggle('hidden',x!==p);
+  document.getElementById('m-'+x).classList.toggle('on',x===p);});}
+function shareMonth(){
+  const t=cur().rows.reduce((s,x)=>s+Number(x.amount||0),0);
+  let txt=`📒 خرج‌یار — هزینه‌های «${cur().name}»\n\n`;
+  cur().rows.forEach((r,i)=>{txt+=`${i+1}. ${r.subject||'—'} | ${money(r.amount)} تومان | ${r.date||'—'}\n`;});
+  txt+=`\nجمع کل: ${money(t)} تومان`;
+  const file=new File([txt],cur().name+'.txt',{type:'text/plain'});
+  if(navigator.canShare && navigator.canShare({files:[file]}))
+    navigator.share({files:[file],title:'هزینه‌های '+cur().name}).catch(()=>{});
+  else if(navigator.share)navigator.share({text:txt}).catch(()=>{});
+  else toast('از خروجی فایل استفاده کن');
+}
+function exportData(){dl(new Blob([JSON.stringify(allFlat(),null,2)],{type:'application/json'}),'kharj-yar-backup.json');}
+function exportCSV(){
+  let csv='\uFEFF'+'شماره,ماه,موضوع,هزینه,تاریخ\n';let n=0;
+  months.forEach(m=>m.rows.forEach(r=>{n++;csv+=`${n},"${m.name}","${r.subject||''}",${r.amount||0},"${r.date||''}"\n`;}));
+  dl(new Blob([csv],{type:'text/csv'}),'kharj-yar.csv');
+}
+function dl(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();toast('فایل ذخیره شد');}
+
+// ---------- month management (tabs are virtual: month name column) ----------
+const dlg=document.getElementById('dlg');
+async function newMonth(name){
+  months.push({name,rows:[]});current=months.length-1;render();toast('ماه «'+name+'» ساخته شد ✅');
+}
+async function renameMonth(i,newName){
+  const m=months[i];const old=m.name;m.name=newName;render();
+  if(!sb)return;
+  for(const r of m.rows){await sb.from('expenses').update({month:newName}).eq('id',r.id);}
+  toast('نام ماه عوض شد ✅');
+}
+async function deleteMonth(i){
+  const m=months[i];
+  const n=m.rows.length;
+  let msg=`ماه «${m.name}» حذف شود؟`;
+  if(n>0)msg=`ماه «${m.name}» شامل ${fa(n)} ردیف هزینه است!\nبا حذف، همه این هزینه‌ها (از دیتابیس هم) پاک می‌شوند. مطمئنی؟`;
+  if(!confirm(msg))return;
+  if(n>0 && !confirm('مطمئن هستی؟ این عمل قابل بازگشت نیست'))return;
+  if(sb)for(const r of m.rows)await sb.from('expenses').delete().eq('id',r.id);
+  months.splice(i,1);
+  if(!months.length)months=[{name:'ماه اول',rows:[]}];
+  if(current>=months.length)current=months.length-1;
+  render();toast('ماه حذف شد 🗑️');
+}
+function moveMonth(i){
+  const v=prompt('شماره جدید این ماه در ترتیب تب‌ها (۱ تا '+fa(months.length)+'):',fa(i+1));
+  if(!v)return;
+  const j=String(v).replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d))-1;
+  if(isNaN(j)||j<0||j>=months.length)return toast('شماره نامعتبر است');
+  if(j===i)return;
+  const [m]=months.splice(i,1);months.splice(j,0,m);current=j;
+  render();toast('ترتیب تغییر کرد ✅');
+}
+function showCtx(i,x,y){
+  ctxIndex=i;
+  const m=document.getElementById('ctxMenu');m.innerHTML='';
+  const mk=(label,cls,fn)=>{const b=document.createElement('button');b.textContent=label;if(cls)b.className=cls;b.onclick=()=>{m.classList.add('hidden');fn();};m.appendChild(b);};
+  mk('✏️ تغییر نام ماه','',()=>{const nm=prompt('نام جدید ماه:',months[ctxIndex].name);if(nm&&nm.trim())renameMonth(ctxIndex,nm.trim());});
+  mk('↔️ جابه‌جایی ترتیب','',()=>moveMonth(i));
+  mk('🗑️ حذف این ماه','danger',()=>deleteMonth(i));
+  m.classList.remove('hidden');
+  const w=m.offsetWidth,h=m.offsetHeight;
+  m.style.left=Math.max(8,Math.min(x,innerWidth-w-8))+'px';
+  m.style.top=Math.max(8,Math.min(y,innerHeight-h-8))+'px';
+}
+function hideCtx(){document.getElementById('ctxMenu').classList.add('hidden');}
+document.addEventListener('click',e=>{if(!e.target.closest('#ctxMenu'))hideCtx();});
+document.addEventListener('scroll',hideCtx,true);
+function dlgOk(){
+  const v=document.getElementById('monthName').value.trim();
+  if(!v)return toast('نام ماه را بنویس');
+  dlg.close();
+  if(dlg.dataset.mode==='rename')renameMonth(Number(dlg.dataset.index),v);
+  else newMonth(v);
+}
+
+window.addEventListener('beforeprint',()=>{
+  const h=document.getElementById('printHeader');h.style.display='block';
+  h.innerHTML=`<h2>خرج‌یار — ${cur().name}</h2>`;
+});
+window.addEventListener('afterprint',()=>{document.getElementById('printHeader').style.display='none';});
+
+render();
+connectSB();
+</script>
+</body>
+</html>
