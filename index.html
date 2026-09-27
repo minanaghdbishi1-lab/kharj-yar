@@ -84,12 +84,7 @@
 
   <section id="page-settings" class="hidden">
     <div class="card">
-      <h3 style="margin-bottom:6px;">🔌 اتصال به دیتابیس (Supabase)</h3>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:8px;">Project URL و anon key را از Settings ← API پنل Supabase کپی و اینجا وارد کنید. هر دو نفر باید همین مقادیر را وارد کنند.</p>
-      <input id="sbUrl" placeholder="https://xxxx.supabase.co" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;font-size:14px;text-align:left;direction:ltr;margin-bottom:8px;">
-      <input id="sbKey" placeholder="anon public key" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;font-size:12px;text-align:left;direction:ltr;margin-bottom:8px;">
-      <button class="btn green" onclick="connectSB()" style="background:var(--green);color:#fff;">🔗 اتصال و ذخیره</button>
-      <p id="sbStatus" style="font-size:13px;margin-top:8px;color:var(--muted);"></p>
+      <p id="dbInfo" style="font-size:13px;color:var(--muted);"></p>
     </div>
     <div class="card">
       <h3 style="margin-bottom:6px;">پشتیبان‌گیری</h3>
@@ -97,7 +92,7 @@
       <button class="btn" onclick="exportCSV()">📄 خروجی اکسل (CSV)</button>
     </div>
     <div class="card" style="font-size:12px;color:var(--muted);text-align:center;">
-      خرج‌یار — نسخه ۳.۰ — دیتابیس Supabase<br>
+      خرج‌یار — نسخه ۳.۱ — دیتابیس Supabase (بدون وابستگی خارجی)<br>
       💡 برای تغییر نام یا حذف ماه: لمس طولانی (یا کلیک راست) روی تب ماه
     </div>
   </section>
@@ -122,16 +117,17 @@
 <div id="toast"></div>
 <div id="printHeader" style="display:none;text-align:center;padding:20px;"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // ⬇️⬇️ این دو خط را با مقادیر خودت پر کن ⬇️⬇️
-const SUPABASE_URL = 'https://YOUR-PROJECT.supabase.co';
-const SUPABASE_ANON_KEY = 'YOUR-ANON-KEY';
+const SUPABASE_URL = 'https://piczniampmxtbsmzrxiv.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_zqSVVIuOt3tJNJjLXWCkig_Bw9AFlMK';
 // ⬆️⬆️ فقط همین دو خط، بقیه را دست نزن ⬆️⬆️
 
-let sb=null, channel=null;
+const API = SUPABASE_URL.replace(/\/+$/,'') + '/rest/v1';
+
 let months=[];           // [{name, rows:[{id,subject,amount,date}]}]
 let current=0, page='expense';
+let online=false, focusIdx=null;
 let ctxIndex=-1, longPressTimer=null, longPressFired=false;
 const fa=n=>String(n).replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d]);
 const money=n=>Number(n||0).toLocaleString('fa-IR');
@@ -141,7 +137,27 @@ function setDot(s){
   const d=document.getElementById('syncDot');
   if(s==='ok'){d.textContent='🟢 سینک فعال';d.style.color='#c8ffd8';}
   else if(s==='err'){d.textContent='🟠 خطای اتصال';d.style.color='#ffe0b0';}
-  else if(s==='off'){d.textContent='● فقط محلی';d.style.color='rgba(255,255,255,.7)';}
+  else {d.textContent='● در حال اتصال…';d.style.color='rgba(255,255,255,.7)';}
+}
+
+// ---------- REST helpers (no external library) ----------
+async function api(path, opts={}){
+  const res = await fetch(API+path, {
+    method: opts.method||'GET',
+    headers:{
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer '+SUPABASE_KEY,
+      'Content-Type':'application/json',
+      'Accept':'application/json',
+      ...(opts.prefer?{'Prefer':opts.prefer}:{})
+    },
+    body: opts.body?JSON.stringify(opts.body):undefined
+  });
+  if(!res.ok){
+    const t=await res.text();
+    throw new Error(t.slice(0,120));
+  }
+  return res.status===204?null:res.json();
 }
 
 // ---------- data rebuild from flat table ----------
@@ -158,49 +174,43 @@ function rebuild(rows){
 function allFlat(){return months.flatMap(m=>m.rows.map(r=>({month:m.name,...r})));}
 const byId=id=>{for(const m of months){const r=m.rows.find(x=>x.id===id);if(r)return{row:r,month:m};}return null;};
 
-// ---------- Supabase ----------
-async function connectSB(){
-  if(SUPABASE_URL.includes('YOUR-PROJECT')||SUPABASE_ANON_KEY.includes('YOUR-ANON')){
-    document.getElementById('sbStatus').textContent='⚠️ ابتدا URL و anon key را بالای فایل جایگزین کن (مرحله ۴ راهنما)';
-    setDot('off');return;
-  }
+// ---------- connection & polling sync ----------
+async function refresh(silent=true){
   try{
-    sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
-    const {data,error}=await sb.from('expenses').select('*').order('created_at',{ascending:true});
-    if(error)throw error;
+    const data=await api('/expenses?select=*&order=created_at.asc');
     rebuild(data);
     render();
-    setDot('ok');
-    document.getElementById('sbStatus').textContent='✅ متصل — تغییرات هر دو نفر لحظه‌ای مشترک است';
-    // realtime
-    if(channel)channel.unsubscribe();
-    channel=sb.channel('kharj-yar');
-    channel.on('postgres_changes',{event:'*',schema:'public',table:'expenses'},async()=>{
-      const {data}=await sb.from('expenses').select('*').order('created_at',{ascending:true});
-      rebuild(data);render();
-    }).subscribe();
+    if(!online){online=true;setDot('ok');
+      document.getElementById('dbInfo').textContent='✅ متصل به دیتابیس — تغییرات هر ۵ ثانیه بین دو نفر همگام می‌شود';}
+    else if(!silent)toast('به‌روزرسانی شد ✅');
   }catch(e){
-    setDot('err');
-    document.getElementById('sbStatus').textContent='❌ خطا: '+(e.message||e);
+    online=false;setDot('err');
+    document.getElementById('dbInfo').textContent='❌ خطای اتصال: '+(e.message||e);
   }
 }
+function startSync(){
+  refresh();
+  setInterval(()=>{ if(document.visibilityState!=='hidden') refresh(); },5000);
+  window.addEventListener('focus',()=>refresh());
+}
 
-// ---------- CRUD (each change goes straight to DB) ----------
+// ---------- CRUD ----------
 async function dbInsert(month,row){
-  if(!sb)return;
-  const {data,error}=await sb.from('expenses').insert({month,subject:row.subject,amount:row.amount,date:row.date}).select().single();
-  if(error){toast('خطای ذخیره: '+error.message);return;}
-  row.id=data.id;
+  try{
+    const out=await api('/expenses',{method:'POST',prefer:'return=representation',body:{month,subject:row.subject,amount:row.amount||0,date:row.date}});
+    if(out&&out[0])row.id=out[0].id;
+  }catch(e){toast('خطای ذخیره: '+(e.message||e));}
 }
 async function dbUpdate(row){
-  if(!sb||!row.id)return;
-  const {error}=await sb.from('expenses').update({subject:row.subject,amount:row.amount,date:row.date}).eq('id',row.id);
-  if(error)toast('خطای ویرایش: '+error.message);
+  if(!row.id)return;
+  try{
+    await api('/expenses?id=eq.'+row.id,{method:'PATCH',body:{subject:row.subject,amount:row.amount||0,date:row.date}});
+  }catch(e){toast('خطای ویرایش: '+(e.message||e));}
 }
 async function dbDelete(id){
-  if(!sb||!id)return;
-  const {error}=await sb.from('expenses').delete().eq('id',id);
-  if(error)toast('خطای حذف: '+error.message);
+  if(!id)return;
+  try{await api('/expenses?id=eq.'+id,{method:'DELETE'});}
+  catch(e){toast('خطای حذف: '+(e.message||e));}
 }
 
 // ---------- UI ----------
@@ -234,7 +244,6 @@ function render(){
     r.appendChild(tr);
   });
   updateTotal();
-  renderSummary();
 }
 let editTimers={};
 function editRow(id,k,v){
@@ -242,7 +251,7 @@ function editRow(id,k,v){
   f.row[k]=k==='amount'?Number(v||0):v;
   updateTotal();
   clearTimeout(editTimers[id+k]);
-  editTimers[id+k]=setTimeout(()=>dbUpdate(f.row),400);
+  editTimers[id+k]=setTimeout(()=>dbUpdate(f.row),500);
 }
 function updateTotal(){
   const t=cur().rows.reduce((s,x)=>s+Number(x.amount||0),0);
@@ -251,9 +260,12 @@ function updateTotal(){
 }
 async function addRow(){
   const row={id:null,subject:'',amount:'',date:''};
-  cur().rows.push(row);render();
+  cur().rows.push(row);
+  const idx=cur().rows.length;
+  render();
   setTimeout(()=>{const ins=document.querySelectorAll('#rows tr:last-child input');if(ins[1])ins[1].focus();},50);
-  await dbInsert(cur().name,row);render();
+  await dbInsert(cur().name,row);
+  if(!row.id){render();} // insert failed — keep row local until next sync
 }
 async function delRow(id){
   const f=byId(id);if(!f)return;
@@ -289,25 +301,23 @@ function exportCSV(){
 }
 function dl(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();toast('فایل ذخیره شد');}
 
-// ---------- month management (tabs are virtual: month name column) ----------
+// ---------- month management ----------
 const dlg=document.getElementById('dlg');
-async function newMonth(name){
-  months.push({name,rows:[]});current=months.length-1;render();toast('ماه «'+name+'» ساخته شد ✅');
-}
 async function renameMonth(i,newName){
-  const m=months[i];const old=m.name;m.name=newName;render();
-  if(!sb)return;
-  for(const r of m.rows){await sb.from('expenses').update({month:newName}).eq('id',r.id);}
+  const m=months[i];m.name=newName;render();
+  for(const r of m.rows){
+    try{await api('/expenses?id=eq.'+r.id,{method:'PATCH',body:{month:newName}});}
+    catch(e){toast('خطا: '+(e.message||e));return;}
+  }
   toast('نام ماه عوض شد ✅');
 }
 async function deleteMonth(i){
-  const m=months[i];
-  const n=m.rows.length;
+  const m=months[i];const n=m.rows.length;
   let msg=`ماه «${m.name}» حذف شود؟`;
   if(n>0)msg=`ماه «${m.name}» شامل ${fa(n)} ردیف هزینه است!\nبا حذف، همه این هزینه‌ها (از دیتابیس هم) پاک می‌شوند. مطمئنی؟`;
   if(!confirm(msg))return;
   if(n>0 && !confirm('مطمئن هستی؟ این عمل قابل بازگشت نیست'))return;
-  if(sb)for(const r of m.rows)await sb.from('expenses').delete().eq('id',r.id);
+  for(const r of m.rows){try{await api('/expenses?id=eq.'+r.id,{method:'DELETE'});}catch(e){}}
   months.splice(i,1);
   if(!months.length)months=[{name:'ماه اول',rows:[]}];
   if(current>=months.length)current=months.length-1;
@@ -342,7 +352,7 @@ function dlgOk(){
   if(!v)return toast('نام ماه را بنویس');
   dlg.close();
   if(dlg.dataset.mode==='rename')renameMonth(Number(dlg.dataset.index),v);
-  else newMonth(v);
+  else{months.push({name:v,rows:[]});current=months.length-1;render();toast('ماه «'+v+'» ساخته شد ✅');}
 }
 
 window.addEventListener('beforeprint',()=>{
@@ -352,7 +362,7 @@ window.addEventListener('beforeprint',()=>{
 window.addEventListener('afterprint',()=>{document.getElementById('printHeader').style.display='none';});
 
 render();
-connectSB();
+startSync();
 </script>
 </body>
 </html>
