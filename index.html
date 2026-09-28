@@ -2,7 +2,7 @@
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" width="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="خرج‌یار">
 <title>خرج‌یار — دفتر هزینه‌ها</title>
@@ -39,9 +39,11 @@
   .hidden{display:none;}
   #toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;opacity:0;transition:.3s;pointer-events:none;z-index:9;max-width:85%;text-align:center;}
   #toast.show{opacity:1;}
-  dialog{border:none;border-radius:16px;padding:20px;max-width:320px;width:90%;}
+  dialog{border:none;border-radius:16px;padding:20px;max-width:420px;width:92%;}
   dialog::backdrop{background:rgba(0,0,0,.4);}
-  dialog input{width:100%;padding:10px;margin:10px 0;border:1px solid #ddd;border-radius:10px;font-size:15px;text-align:center;}
+  dialog input,dialog textarea{width:100%;padding:10px;margin:8px 0;border:1px solid #ddd;border-radius:10px;font-size:14px;}
+  dialog input{text-align:center;}
+  #importText{height:160px;direction:rtl;font-family:inherit;}
   #ctxMenu{position:fixed;z-index:20;background:var(--card);border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,.18);overflow:hidden;min-width:170px;}
   #ctxMenu button{display:block;width:100%;padding:13px 18px;border:none;background:none;font-size:14px;text-align:right;color:var(--text);}
   #ctxMenu button:active{background:#f2f2f2;}
@@ -73,6 +75,9 @@
       <button class="btn primary" onclick="window.print()">🖨️ پرینت / PDF</button>
       <button class="btn blue" onclick="shareMonth()">📤 اشتراک‌گذاری ماه</button>
     </div>
+    <div class="card toolbar">
+      <button class="btn" onclick="openImport()" style="background:#7c4dbe;color:#fff;">📥 وارد کردن از فایل / متن</button>
+    </div>
   </section>
 
   <section id="page-summary" class="hidden">
@@ -93,7 +98,7 @@
       <button class="btn" onclick="exportCSV()">📄 خروجی اکسل (CSV)</button>
     </div>
     <div class="card" style="font-size:12px;color:var(--muted);text-align:center;">
-      خرج‌یار — نسخه ۳.۵ — مرتب‌سازی تاریخ + تأیید حذف<br>
+      خرج‌یار — نسخه ۳.۶ — وارد کردن فایل اکسل/متن<br>
       💡 برای تغییر نام یا حذف ماه: لمس طولانی (یا کلیک راست) روی تب ماه
     </div>
   </section>
@@ -114,10 +119,24 @@
   </div>
 </dialog>
 
+<dialog id="impDlg">
+  <h3 style="text-align:center;">📥 وارد کردن هزینه‌ها</h3>
+  <p style="font-size:12px;color:var(--muted);text-align:center;">فایل اکسل/CSV را انتخاب کن، یا جدول را از Notepad کپی و پیست کن:<br>(ستون‌های: موضوع، مبلغ، تاریخ — ردیف «جمع کل» خودکار حذف می‌شود)</p>
+  <input type="file" id="impFile" accept=".xlsx,.xls,.csv,.txt,.tsv" style="font-size:13px;">
+  <textarea id="importText" placeholder="یا اینجا پیست کن، مثلاً:&#10;۱	میوه	۸۵۰,۰۰۰	۱۴۰۵/۰۷/۰۲&#10;۲	تاکسی	۱۵۰۰۰۰	1405.7.6"></textarea>
+  <input id="impMonth" placeholder="نام ماه برای این داده‌ها (مثلاً: مهر ۱۴۰۵)">
+  <div style="display:flex;gap:8px;">
+    <button class="btn primary" onclick="doImport()">وارد کردن</button>
+    <button class="btn" onclick="impDlg.close()">انصراف</button>
+  </div>
+  <p id="impStatus" style="font-size:13px;margin-top:8px;color:var(--muted);text-align:center;"></p>
+</dialog>
+
 <div id="ctxMenu" class="hidden"></div>
 <div id="toast"></div>
 <div id="printHeader" style="display:none;text-align:center;padding:20px;"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 // ⬇️⬇️ این دو خط را با مقادیر خودت پر کن ⬇️⬇️
 const SUPABASE_URL = 'https://piczniampmxtbsmzrxiv.supabase.co';
@@ -223,9 +242,6 @@ async function refresh(silent=true){
     refreshTimer=setTimeout(refresh,2000);
     return;
   }
-  const focused=document.activeElement;
-  const focusRowBtn=focused&&focused.closest&&focused.closest('tr')?focused.closest('tr').querySelector('.rowdel')?.getAttribute('onclick')||'':null;
-  const focusCol=focused&&focused.tagName==='INPUT'?[...focused.closest('tr').querySelectorAll('input')].indexOf(focused):-1;
   try{
     const data=await api('/expenses?select=*&order=created_at.asc');
     try{
@@ -234,16 +250,6 @@ async function refresh(silent=true){
     }catch(_){monthsOrder=[];}
     rebuild(data);
     render();
-    if(focusRowBtn&&focusCol>=0){
-      const btns=[...document.querySelectorAll('.rowdel')];
-      const i=btns.findIndex(b=>b.getAttribute('onclick')===focusRowBtn);
-      if(i>=0){
-        const tr=document.querySelectorAll('#rows tr')[i];
-        const inp=tr?tr.querySelectorAll('input')[focusCol]:null;
-        if(inp){inp.focus();
-          try{inp.setSelectionRange(inp.value.length,inp.value.length);}catch(e){}}
-      }
-    }
     if(!online){online=true;setDot('ok');
       document.getElementById('dbInfo').textContent='✅ متصل به دیتابیس — ردیف‌ها بر اساس تاریخ مرتب می‌شوند';}
     else if(!silent)toast('به‌روزرسانی شد ✅');
@@ -259,6 +265,10 @@ function startSync(){
 }
 
 // ---------- CRUD ----------
+async function dbInsertBatch(month,rows){
+  const body=rows.map(r=>({month,subject:r.subject,amount:r.amount||0,date:r.date}));
+  return api('/expenses',{method:'POST',prefer:'return=representation',body});
+}
 async function dbInsert(month,row){
   try{
     const out=await api('/expenses',{method:'POST',prefer:'return=representation',body:{month,subject:row.subject,amount:row.amount||0,date:row.date}});
@@ -300,13 +310,10 @@ function render(){
   const r=document.getElementById('rows');r.innerHTML='';
   cur().rows.forEach((row,i)=>{
     const tr=document.createElement('tr');
-    const subj=row.subject||'';
-    const dt=row.date?fa(row.date):'—';
-    const am=money(row.amount);
     tr.innerHTML=`<td style="color:#bbb">${fa(i+1)}</td>
-      <td><input value="${subj.replace(/"/g,'&quot;')}" placeholder="موضوع" oninput="editRow('${row.id}','subject',this.value)"></td>
+      <td><input value="${(row.subject||'').replace(/"/g,'&quot;')}" placeholder="موضوع" oninput="editRow('${row.id}','subject',this.value)"></td>
       <td class="amount"><input type="number" inputmode="decimal" value="${row.amount||''}" placeholder="۰" oninput="editRow('${row.id}','amount',this.value)"></td>
-      <td><input value="${dt==='—'?'':dt}" placeholder="۱۴۰۵/۰۷/۰۱" oninput="editRow('${row.id}','date',this.value)" onchange="blurDate('${row.id}',this)"></td>
+      <td><input value="${row.date?fa(row.date):''}" placeholder="۱۴۰۵/۰۷/۰۱" oninput="editRow('${row.id}','date',this.value)" onchange="blurDate('${row.id}',this)"></td>
       <td><button class="rowdel" onclick="delRow('${row.id}')">✕</button></td>`;
     r.appendChild(tr);
   });
@@ -384,6 +391,84 @@ function exportCSV(){
   dl(new Blob([csv],{type:'text/csv'}),'kharj-yar.csv');
 }
 function dl(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();toast('فایل ذخیره شد');}
+
+// ---------- وارد کردن از فایل/متن ----------
+function openImport(){
+  document.getElementById('impFile').value='';
+  document.getElementById('importText').value='';
+  document.getElementById('impMonth').value='';
+  document.getElementById('impStatus').textContent='';
+  impDlg.showModal();
+}
+// متن خام (از Notepad یا CSV) → آرایه ردیف‌ها
+function parseTextTable(text){
+  const lines=toLatinDigits(text).split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  const out=[];
+  for(const line of lines){
+    // جداکننده: تب، یا یک/چند ویرگول-نقطه‌ویرگول
+    let cells=line.includes('\t')?line.split('\t'):line.split(/[,;،]+/);
+    cells=cells.map(c=>c.replace(/^["']|["']$/g,'').trim());
+    if(!cells.some(c=>c))continue;
+    // ردیف سرستون و جمع کل را رد کن
+    const joined=cells.join(' ');
+    if(/^(شماره|ردیف|row)\b/i.test(cells0) || /موضوع/.test(joined)&&/تاریخ/.test(joined))continue;
+    if(/جمع\s*کل|جمع کل|total/i.test(joined))continue;
+    out.push(cells);
+  }
+  return out;
+}
+function rowsToRecords(cells){
+  // در هر ردیف: مبلغ = خانه‌ای که عدد بزرگی است؛ تاریخ = خانه‌ای که تاریخ می‌شود؛ موضوع = بقیه/اولین متن
+  let amount='',date='',subject='';
+  for(const c of cells){
+    if(!c)continue;
+    if(!date && parseDate(c)){date=parseDate(c);continue;}
+    const num=c.replace(/[,\s،٬]/g,'');
+    if(!amount && num && /^-?\d+(\.\d+)?$/.test(num) && Math.abs(Number(num))>=1){amount=Number(num);continue;}
+  }
+  const rest=cells.filter(c=>c && !(parseDate(c)===date && date) && String(c).replace(/[,\s،٬]/g,'')!==String(amount));
+  subject=(rest.find(c=>/[^\d\s.,\/]/.test(c))||'').trim();
+  return {subject,amount:Number(amount||0),date};
+}
+async function doImport(){
+  const st=document.getElementById('impStatus');
+  const monthName=document.getElementById('impMonth').value.trim();
+  if(!monthName){st.textContent='⚠️ نام ماه را بنویس';return;}
+  st.textContent='⏳ در حال خواندن…';
+  let table=[];
+  const file=document.getElementById('impFile').files0;
+  const txt=document.getElementById('importText').value.trim();
+  try{
+    if(file){
+      if(typeof XLSX==='undefined'){
+        st.textContent='❌ کتابخانه اکسل لود نشد (اینترنت/CDN) — لطفاً از راه پیست متن استفاده کن';return;
+      }
+      const buf=await file.arrayBuffer();
+      const wb=XLSX.read(buf,{type:'array',cellDates:false,raw:false});
+      const ws=wb.Sheets[wb.SheetNames0];
+      table=parseTextTable(XLSX.utils.sheet_to_csv(ws,{FS:'\t'}));
+    }else if(txt){
+      table=parseTextTable(txt);
+    }else{
+      st.textContent='⚠️ فایل انتخاب کن یا متن پیست کن';return;
+    }
+    if(!table.length){st.textContent='❌ هیچ ردیف قابل قبولی پیدا نشد';return;}
+    const records=table.map(rowsToRecords).filter(r=>r.subject||r.amount||r.date);
+    if(!records.length){st.textContent='❌ هیچ داده‌ای شناسایی نشد — ساختار جدول را چک کن';return;}
+    // ثبت در دیتابیس (دسته‌ای) + ثبت ماه
+    monthsOrder.push(monthName);
+    api('/months_list',{method:'POST',prefer:'return=minimal',body:{name:monthName,sort:monthsOrder.length}}).catch(()=>{});
+    await dbInsertBatch(monthName,records);
+    impDlg.close();
+    months.push({name:monthName,rows:records.map(r=>({id:null,...r}))});
+    current=months.length-1;
+    render();
+    await refresh();
+    toast(`✅ ${fa(records.length)} ردیف وارد ماه «${monthName}» شد`);
+  }catch(e){
+    st.textContent='❌ خطا: '+(e.message||e);
+  }
+}
 
 // ---------- month management ----------
 const dlg=document.getElementById('dlg');
