@@ -63,13 +63,13 @@
   <section id="page-expense">
     <div class="card">
       <table>
-        <thead><tr><th style="width:32px">#</th><th>موضوع</th><th style="width:100px">هزینه (تومان)</th><th style="width:110px">تاریخ</th><th style="width:30px"></th></tr></thead>
+        <thead><tr><th style="width:32px">#</th><th>موضوع</th><th style="width:120px">هزینه (ریال)</th><th style="width:110px">تاریخ</th><th style="width:30px"></th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
       <button class="btn" onclick="addRow()">＋ افزودن ردیف</button>
     </div>
     <div class="card total">
-      <span>جمع کل این ماه:</span><span id="total">۰ تومان</span>
+      <span>جمع کل این ماه:</span><span id="total">۰ ریال</span>
     </div>
     <div class="card toolbar">
       <button class="btn primary" onclick="window.print()">🖨️ پرینت / PDF</button>
@@ -83,7 +83,7 @@
   <section id="page-summary" class="hidden">
     <div class="card">
       <h3 style="margin-bottom:10px;">خلاصه همه ماه‌ها</h3>
-      <table><thead><tr><th>ماه</th><th style="width:110px">جمع (تومان)</th><th style="width:70px">تعداد</th></tr></thead><tbody id="summaryRows"></tbody></table>
+      <table><thead><tr><th>ماه</th><th style="width:120px">جمع (ریال)</th><th style="width:70px">تعداد</th></tr></thead><tbody id="summaryRows"></tbody></table>
       <div class="total" style="margin-top:12px;border-top:2px solid #eee;padding-top:10px;"><span>جمع کل:</span><span id="grandTotal"></span></div>
     </div>
   </section>
@@ -98,7 +98,7 @@
       <button class="btn" onclick="exportCSV()">📄 خروجی اکسل (CSV)</button>
     </div>
     <div class="card" style="font-size:12px;color:var(--muted);text-align:center;">
-      خرج‌یار — نسخه ۳.۷.۱ — وارد کردن فایل/متن<br>
+      خرج‌یار — نسخه ۴.۰ — ریال + جداکننده + وارد کردن اکسل/ورد/متن<br>
       💡 برای تغییر نام یا حذف ماه: لمس طولانی (یا کلیک راست) روی تب ماه
     </div>
   </section>
@@ -121,9 +121,9 @@
 
 <dialog id="impDlg">
   <h3 style="text-align:center;">📥 وارد کردن هزینه‌ها</h3>
-  <p style="font-size:12px;color:var(--muted);text-align:center;">فایل اکسل/CSV یا متن Notepad — هر دو فرمت زیر پشتیبانی می‌شود:<br>«موضوع: مبلغ - تاریخ» یا جدول ستونی (موضوع، مبلغ، تاریخ)</p>
-  <input type="file" id="impFile" accept=".xlsx,.xls,.csv,.txt,.tsv" style="font-size:13px;">
-  <textarea id="importText" placeholder="مثلاً:&#10;۱-انتقال بیمه تامین اجتماعی: 55.662.341 - 1405.4.1&#10;۲-پرداخت آب و گاز پایانه: 6.782.660 -1405.4.1"></textarea>
+  <p style="font-size:12px;color:var(--muted);text-align:center;">فایل اکسل (xlsx/csv) یا ورد (docx) را انتخاب کن، یا متن را پیست کن.<br>فرمت‌های پشتیبانی‌شده: جدول ستونی یا «موضوع: مبلغ - تاریخ»</p>
+  <input type="file" id="impFile" accept=".xlsx,.xls,.csv,.txt,.tsv,.docx" style="font-size:13px;">
+  <textarea id="importText" placeholder="یا اینجا پیست کن، مثلاً:&#10;۱-انتقال بیمه تامین اجتماعی: 55.662.341 - 1405.4.1&#10;۲-پرداخت آب و گاز پایانه: 6.782.660 -1405.4.1"></textarea>
   <input id="impMonth" placeholder="نام ماه برای این داده‌ها (مثلاً: مهر ۱۴۰۵)">
   <div style="display:flex;gap:8px;">
     <button class="btn primary" onclick="doImport()">وارد کردن</button>
@@ -137,6 +137,7 @@
 <div id="printHeader" style="display:none;text-align:center;padding:20px;"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
 <script>
 // ⬇️⬇️ این دو خط را با مقادیر خودت پر کن ⬇️⬇️
 const SUPABASE_URL = 'https://piczniampmxtbsmzrxiv.supabase.co';
@@ -154,7 +155,8 @@ let online=false;
 let ctxIndex=-1, longPressTimer=null, longPressFired=false;
 let refreshTimer=null;
 const fa=n=>String(n).replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d]);
-const money=n=>Number(n||0).toLocaleString('fa-IR');
+// مبلغ با جداکننده نقطه: ۱.۰۰۰.۰۰۰
+const money=n=>fa(String(Math.round(Number(n)||0)).replace(/\B(?=(\d{3})+(?!\d))/g,'.'))+' ریال';
 const cur=()=>months[current]||months[0];
 const toast=t=>{const el=document.getElementById('toast');el.textContent=t;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500);};
 function setDot(s){
@@ -164,8 +166,10 @@ function setDot(s){
   else {d.textContent='● در حال اتصال…';d.style.color='rgba(255,255,255,.7)';}
 }
 
-// ---------- تاریخ: تصحیح، سریال اکسل، میلادی→شمسی ----------
+// ---------- اعداد و تاریخ ----------
 function toLatinDigits(s){return String(s).replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d));}
+function onlyDigits(s){return toLatinDigits(s).replace(/[^\d]/g,'');}
+function groupDigits(d){return d.replace(/\B(?=(\d{3})+(?!\d))/g,'.');}
 function div(a,b){return ~~(a/b);}
 function g2j(gy,gm,gd){
   const g_d_m=[0,31,59,90,120,151,181,212,243,273,304,334];
@@ -277,7 +281,7 @@ async function refresh(silent=true){
     rebuild(data);
     render();
     if(!online){online=true;setDot('ok');
-      document.getElementById('dbInfo').textContent='✅ متصل به دیتابیس — ردیف‌ها بر اساس تاریخ مرتب می‌شوند';}
+      document.getElementById('dbInfo').textContent='✅ متصل به دیتابیس — مبالغ ریال، ردیف‌ها مرتب بر اساس تاریخ';}
     else if(!silent)toast('به‌روزرسانی شد ✅');
   }catch(e){
     online=false;setDot('err');
@@ -338,18 +342,27 @@ function render(){
     const tr=document.createElement('tr');
     tr.innerHTML=`<td style="color:#bbb">${fa(i+1)}</td>
       <td><input value="${(row.subject||'').replace(/"/g,'&quot;')}" placeholder="موضوع" oninput="editRow('${row.id}','subject',this.value)"></td>
-      <td class="amount"><input type="number" inputmode="decimal" value="${row.amount||''}" placeholder="۰" oninput="editRow('${row.id}','amount',this.value)"></td>
-      <td><input value="${row.date?fa(row.date):''}" placeholder="۱۴۰۵/۰۷/۰۱" oninput="editRow('${row.id}','date',this.value)" onchange="blurDate('${row.id}',this)"></td>
+      <td class="amount"><input type="text" inputmode="numeric" value="${row.amount?groupDigits(String(Math.round(row.amount))):''}" placeholder="۰" oninput="editAmount('${row.id}',this)"></td>
+      <td><input type="text" inputmode="numeric" value="${row.date?fa(row.date):''}" placeholder="۱۴۰۵/۰۷/۰۱" oninput="editRow('${row.id}','date',this.value)" onchange="blurDate('${row.id}',this)"></td>
       <td><button class="rowdel" onclick="delRow('${row.id}')">✕</button></td>`;
     r.appendChild(tr);
   });
   updateTotal();
 }
 let editTimers={};
+function editAmount(id,inp){
+  const f=byId(id);if(!f)return;
+  const digits=onlyDigits(inp.value);
+  inp.value=digits?groupDigits(digits):'';
+  f.row.amount=Number(digits||0);
+  updateTotal();
+  clearTimeout(editTimers[id+'amount']);
+  editTimers[id+'amount']=setTimeout(()=>dbUpdate(f.row),600);
+}
 function editRow(id,k,v){
   const f=byId(id);if(!f)return;
   if(k==='date'){f.row[k]=toLatinDigits(v);}
-  else f.row[k]=k==='amount'?Number(v||0):v;
+  else f.row[k]=v;
   updateTotal();
   clearTimeout(editTimers[id+k]);
   editTimers[id+k]=setTimeout(()=>dbUpdate(f.row),600);
@@ -370,11 +383,11 @@ function blurDate(id,inp){
 }
 function updateTotal(){
   const t=cur().rows.reduce((s,x)=>s+Number(x.amount||0),0);
-  document.getElementById('total').textContent=money(t)+' تومان';
+  document.getElementById('total').textContent=money(t);
   renderSummary();
 }
 async function addRow(){
-  const row={id:null,subject:'',amount:'',date:''};
+  const row={id:null,subject:'',amount:0,date:''};
   cur().rows.push(row);
   render();
   setTimeout(()=>{const ins=document.querySelectorAll('#rows tr:last-child input');if(ins1)ins1.focus();},50);
@@ -383,7 +396,7 @@ async function addRow(){
 async function delRow(id){
   const f=byId(id);if(!f)return;
   const subj=f.row.subject||'(بدون موضوع)';
-  const amt=f.row.amount?money(f.row.amount)+' تومان':'';
+  const amt=f.row.amount?money(f.row.amount):'';
   if(!confirm(`این ردیف حذف شود؟\n\n${subj} ${amt?'| '+amt:''}\n\n(از دیتابیس هم حذف می‌شود)`))return;
   f.month.rows=f.month.rows.filter(x=>x.id!==id);
   render();await dbDelete(id);
@@ -394,7 +407,7 @@ function renderSummary(){
   let g=0;
   months.forEach(m=>{const t=m.rows.reduce((s,x)=>s+Number(x.amount||0),0);g+=t;
     sr.insertAdjacentHTML('beforeend',`<tr><td>${fa(m.name)}</td><td class="amount">${money(t)}</td><td class="amount">${fa(m.rows.length)}</td></tr>`);});
-  document.getElementById('grandTotal').textContent=money(g)+' تومان';
+  document.getElementById('grandTotal').textContent=money(g);
 }
 function goPage(p){page=p;['expense','summary','settings'].forEach(x=>{
   document.getElementById('page-'+x).classList.toggle('hidden',x!==p);
@@ -402,8 +415,8 @@ function goPage(p){page=p;['expense','summary','settings'].forEach(x=>{
 function shareMonth(){
   const t=cur().rows.reduce((s,x)=>s+Number(x.amount||0),0);
   let txt=`📒 خرج‌یار — هزینه‌های «${cur().name}»\n\n`;
-  cur().rows.forEach((r,i)=>{txt+=`${i+1}. ${r.subject||'—'} | ${money(r.amount)} تومان | ${r.date?fa(r.date):'—'}\n`;});
-  txt+=`\nجمع کل: ${money(t)} تومان`;
+  cur().rows.forEach((r,i)=>{txt+=`${i+1}. ${r.subject||'—'} | ${money(r.amount)} | ${r.date?fa(r.date):'—'}\n`;});
+  txt+=`\nجمع کل: ${money(t)}`;
   const file=new File([txt],cur().name+'.txt',{type:'text/plain'});
   if(navigator.canShare && navigator.canShare({files:[file]}))
     navigator.share({files:[file],title:'هزینه‌های '+cur().name}).catch(()=>{});
@@ -412,7 +425,7 @@ function shareMonth(){
 }
 function exportData(){dl(new Blob([JSON.stringify(allFlat(),null,2)],{type:'application/json'}),'kharj-yar-backup.json');}
 function exportCSV(){
-  let csv='\uFEFF'+'شماره,ماه,موضوع,هزینه,تاریخ\n';let n=0;
+  let csv='\uFEFF'+'شماره,ماه,موضوع,هزینه (ریال),تاریخ\n';let n=0;
   months.forEach(m=>m.rows.forEach(r=>{n++;csv+=`${n},"${m.name}","${r.subject||''}",${r.amount||0},"${r.date||''}"\n`;}));
   dl(new Blob([csv],{type:'text/csv'}),'kharj-yar.csv');
 }
@@ -431,10 +444,10 @@ function parseColonLine(line){
   const body=s.replace(/^\s*\d+\s*[-–]\s*/,'');
   const m=body.match(/^(.+?)\s*[:：]\s*([\d.,،٬\s]+?)\s*[-–]\s*(.+)$/);
   if(!m)return null;
-  const amount=Number(m[2].replace(/[.,،٬\s]/g,''));
+  const amount=Number(m2.replace(/[.,،٬\s]/g,''));
   if(!amount||isNaN(amount))return null;
-  const date=parseDate(m[3]);
-  return {subject:m[1].trim(),amount,date:date||''};
+  const date=parseDate(m3);
+  return {subject:m1.trim(),amount,date:date||''};
 }
 function parseTextTable(text){
   const lines=toLatinDigits(text).split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
@@ -453,25 +466,27 @@ function parseTextTable(text){
   return out;
 }
 function rowsToRecords(cells){
-  let amount='',date='',subject='';
+  let date='';
+  const nums=[];
   for(const c of cells){
-    if(c===null||c===undefined||c==='')continue;
-    const cs=String(c).trim();
+    const cs=String(c==null?'':c).trim();
     if(!cs)continue;
     if(!date){const p=parseDate(cs);if(p){date=p;continue;}}
     const num=cs.replace(/[,\s،٬.]/g,'');
-    if(!amount&&num&&/^-?\d+$/.test(num)&&Math.abs(Number(num))>=1){amount=Number(num);continue;}
+    if(/^\d+$/.test(num))nums.push(Number(num));
   }
+  // مبلغ = بزرگ‌ترین عدد ردیف (ستون شماره کوچک‌تر است)
+  const amount=nums.length?Math.max(...nums):0;
   const rest=cells.filter(c=>{
-    const cs=String(c||'').trim();
+    const cs=String(c==null?'':c).trim();
     if(!cs)return false;
     if(date&&parseDate(cs)===date)return false;
     const num=cs.replace(/[,\s،٬.]/g,'');
-    if(amount&&/^\d+$/.test(num)&&Number(num)===Number(amount))return false;
+    if(/^\d+$/.test(num)&&Number(num)===amount)return false;
     return true;
   });
-  subject=(rest.find(c=>/[^\d\s.,\/]/.test(c))||'').trim();
-  return {subject,amount:Number(amount||0),date};
+  const subject=(rest.find(c=>/[^\d\s.,\/]/.test(c))||'').trim();
+  return {subject,amount,date};
 }
 async function doImport(){
   const st=document.getElementById('impStatus');
@@ -484,13 +499,27 @@ async function doImport(){
   const txt=document.getElementById('importText').value.trim();
   try{
     if(file){
-      if(typeof XLSX==='undefined'){
-        st.textContent='❌ کتابخانه اکسل لود نشد — از راه پیست متن استفاده کن';return;
+      const ext=(file.name.split('.').pop()||'').toLowerCase();
+      if(ext==='docx'){
+        if(typeof mammoth==='undefined'){
+          st.textContent='❌ کتابخانه ورد لود نشد — متن را کپی و پیست کن';return;
+        }
+        const ab=await file.arrayBuffer();
+        const res=await mammoth.extractRawText({arrayBuffer:ab});
+        table=parseTextTable(res.value);
+      }else if(ext==='xlsx'||ext==='xls'){
+        if(typeof XLSX==='undefined'){
+          st.textContent='❌ کتابخانه اکسل لود نشد (CDN) — فایل را CSV ذخیره کن یا متن را پیست کن';return;
+        }
+        const buf=await file.arrayBuffer();
+        const wb=XLSX.read(buf,{type:'array'});
+        const ws=wb.Sheets[wb.SheetNames0];
+        table=parseTextTable(XLSX.utils.sheet_to_csv(ws,{FS:'\t',raw:true}));
+      }else{
+        // csv / txt / tsv — بدون هیچ کتابخانه‌ای
+        const text=await file.text();
+        table=parseTextTable(text);
       }
-      const buf=await file.arrayBuffer();
-      const wb=XLSX.read(buf,{type:'array'});
-      const ws=wb.Sheets[wb.SheetNames0];
-      table=parseTextTable(XLSX.utils.sheet_to_csv(ws,{FS:'\t',raw:true}));
     }else if(txt){
       table=parseTextTable(txt);
     }else{
@@ -510,7 +539,8 @@ async function doImport(){
     }
     impDlg.close();
     await refresh();
-    current=Math.max(0,monthsOrder.indexOf(monthName));
+    const ci=monthsOrder.indexOf(monthName);
+    current=ci>=0?ci:0;
     render();
     toast(`✅ ${fa(records.length)} ردیف وارد ماه «${monthName}» شد`);
   }catch(e){
