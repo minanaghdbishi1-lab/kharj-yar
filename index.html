@@ -2,9 +2,8 @@
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" width="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="خرج‌یار">
 <title>خرج‌یار — دفتر هزینه‌ها</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📒</text></svg>">
@@ -94,7 +93,7 @@
       <button class="btn" onclick="exportCSV()">📄 خروجی اکسل (CSV)</button>
     </div>
     <div class="card" style="font-size:12px;color:var(--muted);text-align:center;">
-      خرج‌یار — نسخه ۳.۳ — دیتابیس Supabase (بدون وابستگی خارجی)<br>
+      خرج‌یار — نسخه ۳.۵ — مرتب‌سازی تاریخ + تأیید حذف<br>
       💡 برای تغییر نام یا حذف ماه: لمس طولانی (یا کلیک راست) روی تب ماه
     </div>
   </section>
@@ -144,7 +143,31 @@ function setDot(s){
   else {d.textContent='● در حال اتصال…';d.style.color='rgba(255,255,255,.7)';}
 }
 
-// ---------- REST helpers (no external library) ----------
+// ---------- تاریخ: تصحیح و مقایسه ----------
+function toLatinDigits(s){return String(s).replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d));}
+function parseDate(raw){
+  if(!raw)return null;
+  let s=toLatinDigits(raw).trim();
+  let parts=s.split(/[^0-9]+/).filter(Boolean);
+  let y,m,d;
+  if(parts.length>=3){y=parts[0];m=parts[1];d=parts[2];}
+  else if(parts.length===1){
+    const t=parts[0];
+    if(t.length===8){y=t.slice(0,4);m=t.slice(4,6);d=t.slice(6,8);}
+    else if(t.length===6){y='14'+t.slice(0,2);m=t.slice(2,4);d=t.slice(4,6);}
+    else return null;
+  }
+  else return null;
+  y=Number(y);m=Number(m);d=Number(d);
+  if(y<200)y+=1400;
+  if(y<1200||y>1500)return null;
+  if(m<1||m>12)return null;
+  if(d<1||d>31)return null;
+  return y+'/'+String(m).padStart(2,'0')+'/'+String(d).padStart(2,'0');
+}
+const dateKey=s=>{const p=parseDate(s);return p?p.replace(/\//g,''):'99999999';};
+
+// ---------- REST helpers ----------
 async function api(path, opts={}){
   const res = await fetch(API+path, {
     method: opts.method||'GET',
@@ -164,7 +187,7 @@ async function api(path, opts={}){
   return res.status===204?null:res.json();
 }
 
-// ---------- data rebuild from flat table ----------
+// ---------- data rebuild ----------
 function rebuild(rows){
   const map=new Map();
   (rows||[]).forEach(r=>{
@@ -177,25 +200,31 @@ function rebuild(rows){
   if(current>=months.length)current=0;
   const idx=n=>{const i=monthsOrder.indexOf(n);return i<0?999:i;};
   months.sort((a,b)=>idx(a.name)-idx(b.name));
+  months.forEach(m=>{
+    m.rows.sort((a,b)=>{
+      const ka=dateKey(a.date),kb=dateKey(b.date);
+      if(ka!==kb)return ka<kb?-1:1;
+      return (a.seq||0)-(b.seq||0);
+    });
+    m.rows.forEach((r,i)=>r.seq=i);
+  });
 }
 function allFlat(){return months.flatMap(m=>m.rows.map(r=>({month:m.name,...r})));}
 const byId=id=>{for(const m of months){const r=m.rows.find(x=>x.id===id);if(r)return{row:r,month:m};}return null;};
 
-// ---------- connection & polling sync ----------
+// ---------- sync ----------
 function userBusy(){
   const a=document.activeElement;
   return a && a.tagName==='INPUT' && !a.closest('dialog');
 }
 async function refresh(silent=true){
-  // اگر کاربر در حال تایپ است، سینک را به بعدش موکول کن
   if(userBusy()){
     clearTimeout(refreshTimer);
     refreshTimer=setTimeout(refresh,2000);
     return;
   }
-  // اگر فوکوس داخل جدول بود، جایش را نگه دار تا بعد از رندر برگردد
   const focused=document.activeElement;
-  const focusRowId=focused&&focused.closest&&focused.closest('tr')?focused.closest('tr').querySelector('.rowdel')?.getAttribute('onclick')||'':null;
+  const focusRowBtn=focused&&focused.closest&&focused.closest('tr')?focused.closest('tr').querySelector('.rowdel')?.getAttribute('onclick')||'':null;
   const focusCol=focused&&focused.tagName==='INPUT'?[...focused.closest('tr').querySelectorAll('input')].indexOf(focused):-1;
   try{
     const data=await api('/expenses?select=*&order=created_at.asc');
@@ -205,10 +234,9 @@ async function refresh(silent=true){
     }catch(_){monthsOrder=[];}
     rebuild(data);
     render();
-    // بازگرداندن فوکوس به همان خانه
-    if(focusRowId&&focusCol>=0){
+    if(focusRowBtn&&focusCol>=0){
       const btns=[...document.querySelectorAll('.rowdel')];
-      const i=btns.findIndex(b=>b.getAttribute('onclick')===focusRowId);
+      const i=btns.findIndex(b=>b.getAttribute('onclick')===focusRowBtn);
       if(i>=0){
         const tr=document.querySelectorAll('#rows tr')[i];
         const inp=tr?tr.querySelectorAll('input')[focusCol]:null;
@@ -217,7 +245,7 @@ async function refresh(silent=true){
       }
     }
     if(!online){online=true;setDot('ok');
-      document.getElementById('dbInfo').textContent='✅ متصل به دیتابیس — تغییرات به‌صورت خودکار همگام می‌شود';}
+      document.getElementById('dbInfo').textContent='✅ متصل به دیتابیس — ردیف‌ها بر اساس تاریخ مرتب می‌شوند';}
     else if(!silent)toast('به‌روزرسانی شد ✅');
   }catch(e){
     online=false;setDot('err');
@@ -272,10 +300,13 @@ function render(){
   const r=document.getElementById('rows');r.innerHTML='';
   cur().rows.forEach((row,i)=>{
     const tr=document.createElement('tr');
+    const subj=row.subject||'';
+    const dt=row.date?fa(row.date):'—';
+    const am=money(row.amount);
     tr.innerHTML=`<td style="color:#bbb">${fa(i+1)}</td>
-      <td><input value="${(row.subject||'').replace(/"/g,'&quot;')}" placeholder="موضوع" oninput="editRow('${row.id}','subject',this.value)"></td>
+      <td><input value="${subj.replace(/"/g,'&quot;')}" placeholder="موضوع" oninput="editRow('${row.id}','subject',this.value)"></td>
       <td class="amount"><input type="number" inputmode="decimal" value="${row.amount||''}" placeholder="۰" oninput="editRow('${row.id}','amount',this.value)"></td>
-      <td><input value="${row.date||''}" placeholder="۱۴۰۵/۰۷/۰۱" oninput="editRow('${row.id}','date',this.value)"></td>
+      <td><input value="${dt==='—'?'':dt}" placeholder="۱۴۰۵/۰۷/۰۱" oninput="editRow('${row.id}','date',this.value)" onchange="blurDate('${row.id}',this)"></td>
       <td><button class="rowdel" onclick="delRow('${row.id}')">✕</button></td>`;
     r.appendChild(tr);
   });
@@ -284,10 +315,25 @@ function render(){
 let editTimers={};
 function editRow(id,k,v){
   const f=byId(id);if(!f)return;
-  f.row[k]=k==='amount'?Number(v||0):v;
+  if(k==='date'){f.row[k]=toLatinDigits(v);}
+  else f.row[k]=k==='amount'?Number(v||0):v;
   updateTotal();
   clearTimeout(editTimers[id+k]);
   editTimers[id+k]=setTimeout(()=>dbUpdate(f.row),600);
+}
+function blurDate(id,inp){
+  const f=byId(id);if(!f)return;
+  const raw=toLatinDigits(inp.value).trim();
+  if(!raw){return;}
+  const fixed=parseDate(raw);
+  if(fixed){
+    const faFixed=fa(fixed);
+    if(inp.value!==faFixed){inp.value=faFixed;toast('تاریخ اصلاح شد: '+faFixed);}
+    if(f.row.date!==fixed){f.row.date=fixed;dbUpdate(f.row).then(()=>refresh());return;}
+  }else{
+    toast('⚠️ «'+inp.value+'» تاریخ معتبری نیست — مثال: ۱۴۰۵/۰۷/۰۶');
+  }
+  dbUpdate(f.row);
 }
 function updateTotal(){
   const t=cur().rows.reduce((s,x)=>s+Number(x.amount||0),0);
@@ -303,8 +349,12 @@ async function addRow(){
 }
 async function delRow(id){
   const f=byId(id);if(!f)return;
+  const subj=f.row.subject||'(بدون موضوع)';
+  const amt=f.row.amount?money(f.row.amount)+' تومان':'';
+  if(!confirm(`این ردیف حذف شود؟\n\n${subj} ${amt?'| '+amt:''}\n\n(از دیتابیس هم حذف می‌شود)`))return;
   f.month.rows=f.month.rows.filter(x=>x.id!==id);
   render();await dbDelete(id);
+  toast('حذف شد 🗑️');
 }
 function renderSummary(){
   const sr=document.getElementById('summaryRows');if(!sr)return;sr.innerHTML='';
@@ -319,7 +369,7 @@ function goPage(p){page=p;['expense','summary','settings'].forEach(x=>{
 function shareMonth(){
   const t=cur().rows.reduce((s,x)=>s+Number(x.amount||0),0);
   let txt=`📒 خرج‌یار — هزینه‌های «${cur().name}»\n\n`;
-  cur().rows.forEach((r,i)=>{txt+=`${i+1}. ${r.subject||'—'} | ${money(r.amount)} تومان | ${r.date||'—'}\n`;});
+  cur().rows.forEach((r,i)=>{txt+=`${i+1}. ${r.subject||'—'} | ${money(r.amount)} تومان | ${r.date?fa(r.date):'—'}\n`;});
   txt+=`\nجمع کل: ${money(t)} تومان`;
   const file=new File([txt],cur().name+'.txt',{type:'text/plain'});
   if(navigator.canShare && navigator.canShare({files:[file]}))
