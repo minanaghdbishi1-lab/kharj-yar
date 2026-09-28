@@ -525,6 +525,7 @@ async function doImport(){
 
 // ---------- month management ----------
 const dlg=document.getElementById('dlg');
+const impDlg=document.getElementById('impDlg');
 async function renameMonth(i,newName){
   const m=months[i];const old=m.name;
   monthsOrder=monthsOrder.map(n=>n===old?newName:n);
