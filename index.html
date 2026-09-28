@@ -431,10 +431,10 @@ function parseColonLine(line){
   const body=s.replace(/^\s*\d+\s*[-–]\s*/,'');
   const m=body.match(/^(.+?)\s*[:：]\s*([\d.,،٬\s]+?)\s*[-–]\s*(.+)$/);
   if(!m)return null;
-  const amount=Number(m2.replace(/[.,،٬\s]/g,''));
+  const amount=Number(m[2].replace(/[.,،٬\s]/g,''));
   if(!amount||isNaN(amount))return null;
-  const date=parseDate(m3);
-  return {subject:m1.trim(),amount,date:date||''};
+  const date=parseDate(m[3]);
+  return {subject:m[1].trim(),amount,date:date||''};
 }
 function parseTextTable(text){
   const lines=toLatinDigits(text).split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
