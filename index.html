@@ -98,7 +98,7 @@
       <button class="btn" onclick="exportCSV()">📄 خروجی اکسل (CSV)</button>
     </div>
     <div class="card" style="font-size:12px;color:var(--muted);text-align:center;">
-      خرج‌یار — نسخه ۳.۷ — پارسر متن «موضوع: مبلغ - تاریخ»<br>
+      خرج‌یار — نسخه ۳.۷.۱ — وارد کردن فایل/متن<br>
       💡 برای تغییر نام یا حذف ماه: لمس طولانی (یا کلیک راست) روی تب ماه
     </div>
   </section>
@@ -144,6 +144,8 @@ const SUPABASE_KEY = 'sb_publishable_zqSVVIuOt3tJNJjLXWCkig_Bw9AFlMK';
 // ⬆️⬆️ فقط همین دو خط، بقیه را دست نزن ⬆️⬆️
 
 const API = SUPABASE_URL.replace(/\/+$/,'') + '/rest/v1';
+const impDlg = document.getElementById('impDlg');
+const dlg = document.getElementById('dlg');
 
 let months=[{name:'ماه اول',rows:[]}];
 let monthsOrder=[];
@@ -179,7 +181,6 @@ function g2j(gy,gm,gd){
   return [jy,jm,jd];
 }
 function serialToJalali(n){
-  // عدد سریال اکسل → تاریخ شمسی
   n=Math.round(Number(n));
   if(n<20000||n>80000)return null;
   const d=new Date(Date.UTC(1899,11,30)+n*86400000);
@@ -196,7 +197,7 @@ function parseDate(raw){
   if(parts.length>=3){y=parts[0];m=parts[1];d=parts[2];}
   else if(parts.length===1){
     const t=parts[0];
-    if(t.length>=5&&t.length<=6&&Number(t)>20000)return serialToJalali(t); // سریال اکسل متنی
+    if(t.length>=5&&t.length<=6&&Number(t)>20000)return serialToJalali(t);
     if(t.length===8){y=t.slice(0,4);m=t.slice(4,6);d=t.slice(6,8);}
     else if(t.length===6){y='14'+t.slice(0,2);m=t.slice(2,4);d=t.slice(4,6);}
     else return null;
@@ -425,10 +426,8 @@ function openImport(){
   document.getElementById('impStatus').textContent='';
   impDlg.showModal();
 }
-// خط «موضوع: مبلغ - تاریخ» (فرمت Notepad شما)
 function parseColonLine(line){
   const s=toLatinDigits(line).trim();
-  // بعد از شماره ردیف و خط‌تیره اول: «۱-متن...»
   const body=s.replace(/^\s*\d+\s*[-–]\s*/,'');
   const m=body.match(/^(.+?)\s*[:：]\s*([\d.,،٬\s]+?)\s*[-–]\s*(.+)$/);
   if(!m)return null;
@@ -437,15 +436,12 @@ function parseColonLine(line){
   const date=parseDate(m3);
   return {subject:m1.trim(),amount,date:date||''};
 }
-// متن خام (جدولی یا خطی) → ردیف‌ها
 function parseTextTable(text){
   const lines=toLatinDigits(text).split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
   const out=[];
   for(const line of lines){
-    // اول امتحان فرمت «موضوع: مبلغ - تاریخ»
     const col=parseColonLine(line);
     if(col){out.push([col.subject,String(col.amount),col.date||'']);continue;}
-    // وگرنه فرمت جدولی
     let cells=line.includes('\t')?line.split('\t'):line.split(/[,;،]+/);
     cells=cells.map(c=>c.replace(/^["']|["']$/g,'').trim());
     if(!cells.some(c=>c))continue;
@@ -483,7 +479,8 @@ async function doImport(){
   if(!monthName){st.textContent='⚠️ نام ماه را بنویس';return;}
   st.textContent='⏳ در حال خواندن…';
   let table=[];
-  const file=document.getElementById('impFile').files0;
+  const fInput=document.getElementById('impFile');
+  const file=fInput&&fInput.files&&fInput.files0;
   const txt=document.getElementById('importText').value.trim();
   try{
     if(file){
@@ -514,7 +511,6 @@ async function doImport(){
     impDlg.close();
     await refresh();
     current=Math.max(0,monthsOrder.indexOf(monthName));
-    if(current<0)current=0;
     render();
     toast(`✅ ${fa(records.length)} ردیف وارد ماه «${monthName}» شد`);
   }catch(e){
@@ -524,8 +520,6 @@ async function doImport(){
 }
 
 // ---------- month management ----------
-const dlg=document.getElementById('dlg');
-const impDlg=document.getElementById('impDlg');
 async function renameMonth(i,newName){
   const m=months[i];const old=m.name;
   monthsOrder=monthsOrder.map(n=>n===old?newName:n);
