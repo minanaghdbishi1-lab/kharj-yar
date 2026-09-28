@@ -94,7 +94,7 @@
       <button class="btn" onclick="exportCSV()">📄 خروجی اکسل (CSV)</button>
     </div>
     <div class="card" style="font-size:12px;color:var(--muted);text-align:center;">
-      خرج‌یار — نسخه ۳.۲ — دیتابیس Supabase (بدون وابستگی خارجی)<br>
+      خرج‌یار — نسخه ۳.۳ — دیتابیس Supabase (بدون وابستگی خارجی)<br>
       💡 برای تغییر نام یا حذف ماه: لمس طولانی (یا کلیک راست) روی تب ماه
     </div>
   </section>
@@ -132,6 +132,7 @@ let monthsOrder=[];
 let current=0, page='expense';
 let online=false;
 let ctxIndex=-1, longPressTimer=null, longPressFired=false;
+let refreshTimer=null;
 const fa=n=>String(n).replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d]);
 const money=n=>Number(n||0).toLocaleString('fa-IR');
 const cur=()=>months[current]||months[0];
@@ -170,7 +171,6 @@ function rebuild(rows){
     if(!map.has(r.month))map.set(r.month,[]);
     map.get(r.month).push({id:r.id,subject:r.subject,amount:Number(r.amount),date:r.date});
   });
-  let names=[...map.keys()];
   monthsOrder.forEach(n=>{if(!map.has(n))map.set(n,[]);});
   months=[...map.entries()].map(([name,rs])=>({name,rows:rs}));
   if(!months.length)months=[{name:'ماه اول',rows:[]}];
@@ -182,7 +182,21 @@ function allFlat(){return months.flatMap(m=>m.rows.map(r=>({month:m.name,...r}))
 const byId=id=>{for(const m of months){const r=m.rows.find(x=>x.id===id);if(r)return{row:r,month:m};}return null;};
 
 // ---------- connection & polling sync ----------
+function userBusy(){
+  const a=document.activeElement;
+  return a && a.tagName==='INPUT' && !a.closest('dialog');
+}
 async function refresh(silent=true){
+  // اگر کاربر در حال تایپ است، سینک را به بعدش موکول کن
+  if(userBusy()){
+    clearTimeout(refreshTimer);
+    refreshTimer=setTimeout(refresh,2000);
+    return;
+  }
+  // اگر فوکوس داخل جدول بود، جایش را نگه دار تا بعد از رندر برگردد
+  const focused=document.activeElement;
+  const focusRowId=focused&&focused.closest&&focused.closest('tr')?focused.closest('tr').querySelector('.rowdel')?.getAttribute('onclick')||'':null;
+  const focusCol=focused&&focused.tagName==='INPUT'?[...focused.closest('tr').querySelectorAll('input')].indexOf(focused):-1;
   try{
     const data=await api('/expenses?select=*&order=created_at.asc');
     try{
@@ -191,8 +205,19 @@ async function refresh(silent=true){
     }catch(_){monthsOrder=[];}
     rebuild(data);
     render();
+    // بازگرداندن فوکوس به همان خانه
+    if(focusRowId&&focusCol>=0){
+      const btns=[...document.querySelectorAll('.rowdel')];
+      const i=btns.findIndex(b=>b.getAttribute('onclick')===focusRowId);
+      if(i>=0){
+        const tr=document.querySelectorAll('#rows tr')[i];
+        const inp=tr?tr.querySelectorAll('input')[focusCol]:null;
+        if(inp){inp.focus();
+          try{inp.setSelectionRange(inp.value.length,inp.value.length);}catch(e){}}
+      }
+    }
     if(!online){online=true;setDot('ok');
-      document.getElementById('dbInfo').textContent='✅ متصل به دیتابیس — تغییرات هر ۵ ثانیه بین دو نفر همگام می‌شود';}
+      document.getElementById('dbInfo').textContent='✅ متصل به دیتابیس — تغییرات به‌صورت خودکار همگام می‌شود';}
     else if(!silent)toast('به‌روزرسانی شد ✅');
   }catch(e){
     online=false;setDot('err');
@@ -262,7 +287,7 @@ function editRow(id,k,v){
   f.row[k]=k==='amount'?Number(v||0):v;
   updateTotal();
   clearTimeout(editTimers[id+k]);
-  editTimers[id+k]=setTimeout(()=>dbUpdate(f.row),500);
+  editTimers[id+k]=setTimeout(()=>dbUpdate(f.row),600);
 }
 function updateTotal(){
   const t=cur().rows.reduce((s,x)=>s+Number(x.amount||0),0);
