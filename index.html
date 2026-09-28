@@ -98,7 +98,7 @@
       <button class="btn" onclick="exportCSV()">📄 خروجی اکسل (CSV)</button>
     </div>
     <div class="card" style="font-size:12px;color:var(--muted);text-align:center;">
-      خرج‌یار — نسخه ۳.۶ — وارد کردن فایل اکسل/متن<br>
+      خرج‌یار — نسخه ۳.۷ — پارسر متن «موضوع: مبلغ - تاریخ»<br>
       💡 برای تغییر نام یا حذف ماه: لمس طولانی (یا کلیک راست) روی تب ماه
     </div>
   </section>
@@ -121,9 +121,9 @@
 
 <dialog id="impDlg">
   <h3 style="text-align:center;">📥 وارد کردن هزینه‌ها</h3>
-  <p style="font-size:12px;color:var(--muted);text-align:center;">فایل اکسل/CSV را انتخاب کن، یا جدول را از Notepad کپی و پیست کن:<br>(ستون‌های: موضوع، مبلغ، تاریخ — ردیف «جمع کل» خودکار حذف می‌شود)</p>
+  <p style="font-size:12px;color:var(--muted);text-align:center;">فایل اکسل/CSV یا متن Notepad — هر دو فرمت زیر پشتیبانی می‌شود:<br>«موضوع: مبلغ - تاریخ» یا جدول ستونی (موضوع، مبلغ، تاریخ)</p>
   <input type="file" id="impFile" accept=".xlsx,.xls,.csv,.txt,.tsv" style="font-size:13px;">
-  <textarea id="importText" placeholder="یا اینجا پیست کن، مثلاً:&#10;۱	میوه	۸۵۰,۰۰۰	۱۴۰۵/۰۷/۰۲&#10;۲	تاکسی	۱۵۰۰۰۰	1405.7.6"></textarea>
+  <textarea id="importText" placeholder="مثلاً:&#10;۱-انتقال بیمه تامین اجتماعی: 55.662.341 - 1405.4.1&#10;۲-پرداخت آب و گاز پایانه: 6.782.660 -1405.4.1"></textarea>
   <input id="impMonth" placeholder="نام ماه برای این داده‌ها (مثلاً: مهر ۱۴۰۵)">
   <div style="display:flex;gap:8px;">
     <button class="btn primary" onclick="doImport()">وارد کردن</button>
@@ -162,16 +162,41 @@ function setDot(s){
   else {d.textContent='● در حال اتصال…';d.style.color='rgba(255,255,255,.7)';}
 }
 
-// ---------- تاریخ: تصحیح و مقایسه ----------
+// ---------- تاریخ: تصحیح، سریال اکسل، میلادی→شمسی ----------
 function toLatinDigits(s){return String(s).replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d));}
+function div(a,b){return ~~(a/b);}
+function g2j(gy,gm,gd){
+  const g_d_m=[0,31,59,90,120,151,181,212,243,273,304,334];
+  let jy=(gy<=1600)?0:979;
+  gy-=(gy<=1600)?621:1600;
+  const gy2=(gm>2)?(gy+1):gy;
+  let days=(365*gy)+div(gy2+3,4)-div(gy2+99,100)+div(gy2+399,400)-80+gd+g_d_m[gm-1];
+  jy+=33*div(days,12053);days%=12053;
+  jy+=4*div(days,1461);days%=1461;
+  if(days>365){jy+=div(days-1,365);days=(days-1)%365;}
+  const jm=(days<186)?1+div(days,31):7+div(days-186,30);
+  const jd=1+((days<186)?(days%31):((days-186)%30));
+  return [jy,jm,jd];
+}
+function serialToJalali(n){
+  // عدد سریال اکسل → تاریخ شمسی
+  n=Math.round(Number(n));
+  if(n<20000||n>80000)return null;
+  const d=new Date(Date.UTC(1899,11,30)+n*86400000);
+  const [jy,jm,jd]=g2j(d.getUTCFullYear(),d.getUTCMonth()+1,d.getUTCDate());
+  if(jy<1200||jy>1500)return null;
+  return jy+'/'+String(jm).padStart(2,'0')+'/'+String(jd).padStart(2,'0');
+}
 function parseDate(raw){
-  if(!raw)return null;
-  let s=toLatinDigits(raw).trim();
+  if(raw===null||raw===undefined||raw==='')return null;
+  if(typeof raw==='number')return serialToJalali(raw);
+  let s=toLatinDigits(String(raw)).trim();
   let parts=s.split(/[^0-9]+/).filter(Boolean);
   let y,m,d;
   if(parts.length>=3){y=parts[0];m=parts[1];d=parts[2];}
   else if(parts.length===1){
     const t=parts[0];
+    if(t.length>=5&&t.length<=6&&Number(t)>20000)return serialToJalali(t); // سریال اکسل متنی
     if(t.length===8){y=t.slice(0,4);m=t.slice(4,6);d=t.slice(6,8);}
     else if(t.length===6){y='14'+t.slice(0,2);m=t.slice(2,4);d=t.slice(4,6);}
     else return null;
@@ -201,7 +226,7 @@ async function api(path, opts={}){
   });
   if(!res.ok){
     const t=await res.text();
-    throw new Error(t.slice(0,120));
+    throw new Error(t.slice(0,200));
   }
   return res.status===204?null:res.json();
 }
@@ -400,33 +425,55 @@ function openImport(){
   document.getElementById('impStatus').textContent='';
   impDlg.showModal();
 }
-// متن خام (از Notepad یا CSV) → آرایه ردیف‌ها
+// خط «موضوع: مبلغ - تاریخ» (فرمت Notepad شما)
+function parseColonLine(line){
+  const s=toLatinDigits(line).trim();
+  // بعد از شماره ردیف و خط‌تیره اول: «۱-متن...»
+  const body=s.replace(/^\s*\d+\s*[-–]\s*/,'');
+  const m=body.match(/^(.+?)\s*[:：]\s*([\d.,،٬\s]+?)\s*[-–]\s*(.+)$/);
+  if(!m)return null;
+  const amount=Number(m2.replace(/[.,،٬\s]/g,''));
+  if(!amount||isNaN(amount))return null;
+  const date=parseDate(m3);
+  return {subject:m1.trim(),amount,date:date||''};
+}
+// متن خام (جدولی یا خطی) → ردیف‌ها
 function parseTextTable(text){
   const lines=toLatinDigits(text).split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
   const out=[];
   for(const line of lines){
-    // جداکننده: تب، یا یک/چند ویرگول-نقطه‌ویرگول
+    // اول امتحان فرمت «موضوع: مبلغ - تاریخ»
+    const col=parseColonLine(line);
+    if(col){out.push([col.subject,String(col.amount),col.date||'']);continue;}
+    // وگرنه فرمت جدولی
     let cells=line.includes('\t')?line.split('\t'):line.split(/[,;،]+/);
     cells=cells.map(c=>c.replace(/^["']|["']$/g,'').trim());
     if(!cells.some(c=>c))continue;
-    // ردیف سرستون و جمع کل را رد کن
     const joined=cells.join(' ');
-    if(/^(شماره|ردیف|row)\b/i.test(cells0) || /موضوع/.test(joined)&&/تاریخ/.test(joined))continue;
-    if(/جمع\s*کل|جمع کل|total/i.test(joined))continue;
+    if(/^(شماره|ردیف|row)\b/i.test(cells0)||(/موضوع/.test(joined)&&/تاریخ/.test(joined)))continue;
+    if(/جمع\s*کل|total/i.test(joined))continue;
     out.push(cells);
   }
   return out;
 }
 function rowsToRecords(cells){
-  // در هر ردیف: مبلغ = خانه‌ای که عدد بزرگی است؛ تاریخ = خانه‌ای که تاریخ می‌شود؛ موضوع = بقیه/اولین متن
   let amount='',date='',subject='';
   for(const c of cells){
-    if(!c)continue;
-    if(!date && parseDate(c)){date=parseDate(c);continue;}
-    const num=c.replace(/[,\s،٬]/g,'');
-    if(!amount && num && /^-?\d+(\.\d+)?$/.test(num) && Math.abs(Number(num))>=1){amount=Number(num);continue;}
+    if(c===null||c===undefined||c==='')continue;
+    const cs=String(c).trim();
+    if(!cs)continue;
+    if(!date){const p=parseDate(cs);if(p){date=p;continue;}}
+    const num=cs.replace(/[,\s،٬.]/g,'');
+    if(!amount&&num&&/^-?\d+$/.test(num)&&Math.abs(Number(num))>=1){amount=Number(num);continue;}
   }
-  const rest=cells.filter(c=>c && !(parseDate(c)===date && date) && String(c).replace(/[,\s،٬]/g,'')!==String(amount));
+  const rest=cells.filter(c=>{
+    const cs=String(c||'').trim();
+    if(!cs)return false;
+    if(date&&parseDate(cs)===date)return false;
+    const num=cs.replace(/[,\s،٬.]/g,'');
+    if(amount&&/^\d+$/.test(num)&&Number(num)===Number(amount))return false;
+    return true;
+  });
   subject=(rest.find(c=>/[^\d\s.,\/]/.test(c))||'').trim();
   return {subject,amount:Number(amount||0),date};
 }
@@ -441,32 +488,38 @@ async function doImport(){
   try{
     if(file){
       if(typeof XLSX==='undefined'){
-        st.textContent='❌ کتابخانه اکسل لود نشد (اینترنت/CDN) — لطفاً از راه پیست متن استفاده کن';return;
+        st.textContent='❌ کتابخانه اکسل لود نشد — از راه پیست متن استفاده کن';return;
       }
       const buf=await file.arrayBuffer();
-      const wb=XLSX.read(buf,{type:'array',cellDates:false,raw:false});
+      const wb=XLSX.read(buf,{type:'array'});
       const ws=wb.Sheets[wb.SheetNames0];
-      table=parseTextTable(XLSX.utils.sheet_to_csv(ws,{FS:'\t'}));
+      table=parseTextTable(XLSX.utils.sheet_to_csv(ws,{FS:'\t',raw:true}));
     }else if(txt){
       table=parseTextTable(txt);
     }else{
       st.textContent='⚠️ فایل انتخاب کن یا متن پیست کن';return;
     }
-    if(!table.length){st.textContent='❌ هیچ ردیف قابل قبولی پیدا نشد';return;}
+    if(!table.length){st.textContent='❌ هیچ ردیف قابل قبولی پیدا نشد — فرمت را چک کن';return;}
     const records=table.map(rowsToRecords).filter(r=>r.subject||r.amount||r.date);
-    if(!records.length){st.textContent='❌ هیچ داده‌ای شناسایی نشد — ساختار جدول را چک کن';return;}
-    // ثبت در دیتابیس (دسته‌ای) + ثبت ماه
+    if(!records.length){st.textContent='❌ هیچ داده‌ای شناسایی نشد';return;}
+    st.textContent=`⏳ ${fa(records.length)} ردیف شناسایی شد — در حال ثبت…`;
     monthsOrder.push(monthName);
     api('/months_list',{method:'POST',prefer:'return=minimal',body:{name:monthName,sort:monthsOrder.length}}).catch(()=>{});
-    await dbInsertBatch(monthName,records);
+    try{
+      await dbInsertBatch(monthName,records);
+    }catch(e){
+      st.textContent='❌ خطای ثبت در دیتابیس: '+(e.message||e);
+      return;
+    }
     impDlg.close();
-    months.push({name:monthName,rows:records.map(r=>({id:null,...r}))});
-    current=months.length-1;
-    render();
     await refresh();
+    current=Math.max(0,monthsOrder.indexOf(monthName));
+    if(current<0)current=0;
+    render();
     toast(`✅ ${fa(records.length)} ردیف وارد ماه «${monthName}» شد`);
   }catch(e){
     st.textContent='❌ خطا: '+(e.message||e);
+    console.error(e);
   }
 }
 
