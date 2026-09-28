@@ -125,7 +125,7 @@ const SUPABASE_KEY = 'sb_publishable_zqSVVIuOt3tJNJjLXWCkig_Bw9AFlMK';
 
 const API = SUPABASE_URL.replace(/\/+$/,'') + '/rest/v1';
 
-let months=[];           // [{name, rows:[{id,subject,amount,date}]}]
+let months=[{name:'ماه اول',rows:[]}];               // [{name, rows:[{id,subject,amount,date}]}]
 let current=0, page='expense';
 let online=false, focusIdx=null;
 let ctxIndex=-1, longPressTimer=null, longPressFired=false;
