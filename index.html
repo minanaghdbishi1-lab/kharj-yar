@@ -19,13 +19,15 @@
   .tab.active{background:var(--accent);color:#fff;}
   main{padding:12px;}
   .card{background:var(--card);border-radius:14px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:12px;}
-  table{width:100%;border-collapse:collapse;font-size:14px;}
-  th{color:var(--muted);font-weight:600;text-align:right;padding:6px 4px;border-bottom:1px solid #eee;font-size:12px;}
-  td{padding:8px 4px;border-bottom:1px solid #f2f2f2;vertical-align:middle;}
-  td input{width:100%;border:none;background:transparent;font-size:14px;text-align:right;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{color:var(--muted);font-weight:600;text-align:right;padding:6px 3px;border-bottom:1px solid #eee;font-size:11px;}
+  td{padding:7px 3px;border-bottom:1px solid #f2f2f2;vertical-align:middle;}
+  td input{width:100%;border:none;background:transparent;font-size:13px;text-align:right;}
   td input:focus{outline:2px solid var(--accent);border-radius:6px;padding:2px;}
   .amount{text-align:left;font-variant-numeric:tabular-nums;}
-  .rowdel{color:#e05252;background:none;border:none;font-size:16px;}
+  .rowdel{color:#e05252;background:none;border:none;font-size:15px;}
+  .notebtn{background:none;border:none;font-size:14px;cursor:pointer;opacity:.45;}
+  .notebtn.has{opacity:1;}
   .total{display:flex;justify-content:space-between;font-size:16px;font-weight:700;}
   .total span:last-child{color:var(--accent);}
   .btn{display:block;width:100%;padding:12px;margin-top:8px;border:none;border-radius:12px;font-size:15px;background:#eee;color:var(--text);}
@@ -37,13 +39,14 @@
   .menu button .ic{font-size:20px;}
   .menu button.on{color:var(--accent);}
   .hidden{display:none;}
-  #toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;opacity:0;transition:.3s;pointer-events:none;z-index:9;max-width:85%;text-align:center;}
+  #toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;opacity:0;transition:.3s;pointer-events:none;z-index:9;max-width:85%;text-align:center;white-space:pre-line;}
   #toast.show{opacity:1;}
   dialog{border:none;border-radius:16px;padding:20px;max-width:420px;width:92%;}
   dialog::backdrop{background:rgba(0,0,0,.4);}
   dialog input,dialog textarea{width:100%;padding:10px;margin:8px 0;border:1px solid #ddd;border-radius:10px;font-size:14px;}
   dialog input{text-align:center;}
   #importText{height:160px;direction:rtl;font-family:inherit;}
+  #impReport{background:#fff8ef;border:1px solid #f0d9b8;border-radius:10px;padding:10px;margin-top:8px;font-size:13px;}
   #ctxMenu{position:fixed;z-index:20;background:var(--card);border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,.18);overflow:hidden;min-width:170px;}
   #ctxMenu button{display:block;width:100%;padding:13px 18px;border:none;background:none;font-size:14px;text-align:right;color:var(--text);}
   #ctxMenu button:active{background:#f2f2f2;}
@@ -63,7 +66,7 @@
   <section id="page-expense">
     <div class="card">
       <table>
-        <thead><tr><th style="width:32px">#</th><th>موضوع</th><th style="width:120px">هزینه (ریال)</th><th style="width:110px">تاریخ</th><th style="width:30px"></th></tr></thead>
+        <thead><tr><th style="width:30px">#</th><th style="width:26px">یادداشت</th><th>موضوع</th><th style="width:105px">هزینه (ریال)</th><th style="width:100px">تاریخ</th><th style="width:65px">بانک</th><th style="width:26px"></th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
       <button class="btn" onclick="addRow()">＋ افزودن ردیف</button>
@@ -98,8 +101,8 @@
       <button class="btn" onclick="exportCSV()">📄 خروجی اکسل (CSV)</button>
     </div>
     <div class="card" style="font-size:12px;color:var(--muted);text-align:center;">
-      خرج‌یار — نسخه ۴.۱.۱ — پارسر مقاوم<br>
-      💡 برای تغییر نام یا حذف ماه: لمس طولانی (یا کلیک راست) روی تب ماه
+      خرج‌یار — نسخه ۴.۲ — بانک + یادداشت + گزارش خطوط Import<br>
+      💡 یادداشت: روی 📝 کنار شماره ردیف بزن | تغییر نام/حذف ماه: لمس طولانی روی تب
     </div>
   </section>
 </main>
@@ -121,15 +124,22 @@
 
 <dialog id="impDlg">
   <h3 style="text-align:center;">📥 وارد کردن هزینه‌ها</h3>
-  <p style="font-size:12px;color:var(--muted);text-align:center;">فایل اکسل (xlsx/csv) یا ورد (docx) را انتخاب کن، یا متن را پیست کن.<br>موضوع می‌تواند «:» داشته باشد؛ خطوط نامعتبر گزارش می‌شوند، نه کرش!</p>
+  <p style="font-size:12px;color:var(--muted);text-align:center;">فایل اکسل (xlsx/csv) یا ورد (docx) را انتخاب کن، یا متن را پیست کن.<br>فرمت: «موضوع: مبلغ - تاریخ - بانک» (بانک اختیاری است)</p>
   <input type="file" id="impFile" accept=".xlsx,.xls,.csv,.txt,.tsv,.docx" style="font-size:13px;">
-  <textarea id="importText" placeholder="یا اینجا پیست کن، مثلاً:&#10;۱-انتقال بیمه تامین اجتماعی: 55.662.341 - 1405.4.1&#10;۱۲-از رمضان مرادی بنام مهدی: رمضانی:500.000.700 - 1405.7.2&#10;۱۳-رمضان مرادی125.000.700 - 1405.7.2"></textarea>
+  <textarea id="importText" placeholder="یا اینجا پیست کن، مثلاً:&#10;۱-انتقال بیمه تامین اجتماعی: 55.662.341 - 1405.4.1&#10;۱۶-انتقال مبل رضا عندلیب: 150.000.000 - 1405.5.8 - بلو&#10;۱۲-از رمضان مرادی بنام مهدی: رمضانی:500.000.700 - 1405.7.2"></textarea>
   <input id="impMonth" placeholder="نام ماه برای این داده‌ها (مثلاً: مهر ۱۴۰۵)">
   <div style="display:flex;gap:8px;">
     <button class="btn primary" onclick="doImport()">وارد کردن</button>
     <button class="btn" onclick="impDlg.close()">انصراف</button>
   </div>
   <p id="impStatus" style="font-size:13px;margin-top:8px;color:var(--muted);text-align:center;white-space:pre-line;"></p>
+  <div id="impReport" class="hidden">
+    <div id="impReportBody" style="white-space:pre-line;margin-bottom:8px;"></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn primary" onclick="proceedImport()" style="margin-top:0;">✅ ثبت موارد صحیح</button>
+      <button class="btn" onclick="cancelImport()" style="margin-top:0;">✏️ اصلاح می‌کنم</button>
+    </div>
+  </div>
 </dialog>
 
 <div id="ctxMenu" class="hidden"></div>
@@ -154,10 +164,11 @@ let current=0, page='expense';
 let online=false;
 let ctxIndex=-1, longPressTimer=null, longPressFired=false;
 let refreshTimer=null;
+let pendingRecords=null, pendingParsed=null;
 const fa=n=>String(n).replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d]);
 const money=n=>fa(String(Math.round(Number(n)||0)).replace(/\B(?=(\d{3})+(?!\d))/g,'.'))+' ریال';
 const cur=()=>months[current]||months[0];
-const toast=t=>{const el=document.getElementById('toast');el.textContent=t;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500);};
+const toast=t=>{const el=document.getElementById('toast');el.textContent=t;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),3000);};
 function setDot(s){
   const d=document.getElementById('syncDot');
   if(s==='ok'){d.textContent='🟢 سینک فعال';d.style.color='#c8ffd8';}
@@ -240,7 +251,7 @@ function rebuild(rows){
   const map=new Map();
   (rows||[]).forEach(r=>{
     if(!map.has(r.month))map.set(r.month,[]);
-    map.get(r.month).push({id:r.id,subject:r.subject,amount:Number(r.amount),date:r.date});
+    map.get(r.month).push({id:r.id,subject:r.subject,amount:Number(r.amount),date:r.date,bank:r.bank||'',notes:r.notes||''});
   });
   monthsOrder.forEach(n=>{if(!map.has(n))map.set(n,[]);});
   months=[...map.entries()].map(([name,rs])=>({name,rows:rs}));
@@ -280,7 +291,7 @@ async function refresh(silent=true){
     rebuild(data);
     render();
     if(!online){online=true;setDot('ok');
-      document.getElementById('dbInfo').textContent='✅ متصل به دیتابیس — مبالغ ریال، ردیف‌ها مرتب بر اساس تاریخ';}
+      document.getElementById('dbInfo').textContent='✅ متصل به دیتابیس — بانک و یادداشت فعال است';}
     else if(!silent)toast('به‌روزرسانی شد ✅');
   }catch(e){
     online=false;setDot('err');
@@ -295,19 +306,19 @@ function startSync(){
 
 // ---------- CRUD ----------
 async function dbInsertBatch(month,rows){
-  const body=rows.map(r=>({month,subject:r.subject,amount:r.amount||0,date:r.date}));
+  const body=rows.map(r=>({month,subject:r.subject,amount:r.amount||0,date:r.date,bank:r.bank||'',notes:r.notes||''}));
   return api('/expenses',{method:'POST',prefer:'return=representation',body});
 }
 async function dbInsert(month,row){
   try{
-    const out=await api('/expenses',{method:'POST',prefer:'return=representation',body:{month,subject:row.subject,amount:row.amount||0,date:row.date}});
+    const out=await api('/expenses',{method:'POST',prefer:'return=representation',body:{month,subject:row.subject,amount:row.amount||0,date:row.date,bank:row.bank||'',notes:row.notes||''}});
     if(out&&out[0])row.id=out[0].id;
   }catch(e){toast('خطای ذخیره: '+(e.message||e));}
 }
 async function dbUpdate(row){
   if(!row.id)return;
   try{
-    await api('/expenses?id=eq.'+row.id,{method:'PATCH',body:{subject:row.subject,amount:row.amount||0,date:row.date}});
+    await api('/expenses?id=eq.'+row.id,{method:'PATCH',body:{subject:row.subject,amount:row.amount||0,date:row.date,bank:row.bank||'',notes:row.notes||''}});
   }catch(e){toast('خطای ویرایش: '+(e.message||e));}
 }
 async function dbDelete(id){
@@ -339,10 +350,13 @@ function render(){
   const r=document.getElementById('rows');r.innerHTML='';
   cur().rows.forEach((row,i)=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td style="color:#bbb">${fa(i+1)}</td>
+    const hasNote=row.notes&&row.notes.trim();
+    tr.innerHTML=`<td style="color:#bbb;font-size:12px">${fa(i+1)}</td>
+      <td><button class="notebtn${hasNote?' has':''}" title="${(row.notes||'').replace(/"/g,'&quot;')}" onclick="editNote('${row.id}')">${hasNote?'🗒️':'📝'}</button></td>
       <td><input value="${(row.subject||'').replace(/"/g,'&quot;')}" placeholder="موضوع" oninput="editRow('${row.id}','subject',this.value)"></td>
       <td class="amount"><input type="text" inputmode="numeric" value="${row.amount?groupDigits(String(Math.round(row.amount))):''}" placeholder="۰" oninput="editAmount('${row.id}',this)"></td>
       <td><input type="text" inputmode="numeric" value="${row.date?fa(row.date):''}" placeholder="۱۴۰۵/۰۷/۰۱" oninput="editRow('${row.id}','date',this.value)" onchange="blurDate('${row.id}',this)"></td>
+      <td><input type="text" value="${(row.bank||'').replace(/"/g,'&quot;')}" placeholder="بانک" oninput="editRow('${row.id}','bank',this.value)"></td>
       <td><button class="rowdel" onclick="delRow('${row.id}')">✕</button></td>`;
     r.appendChild(tr);
   });
@@ -366,6 +380,13 @@ function editRow(id,k,v){
   clearTimeout(editTimers[id+k]);
   editTimers[id+k]=setTimeout(()=>dbUpdate(f.row),600);
 }
+function editNote(id){
+  const f=byId(id);if(!f)return;
+  const v=prompt('توضیحات این ردیف:',f.row.notes||'');
+  if(v===null)return;
+  f.row.notes=v.trim();
+  dbUpdate(f.row).then(()=>render());
+}
 function blurDate(id,inp){
   const f=byId(id);if(!f)return;
   const raw=toLatinDigits(inp.value).trim();
@@ -386,10 +407,10 @@ function updateTotal(){
   renderSummary();
 }
 async function addRow(){
-  const row={id:null,subject:'',amount:0,date:''};
+  const row={id:null,subject:'',amount:0,date:'',bank:'',notes:''};
   cur().rows.push(row);
   render();
-  setTimeout(()=>{const ins=document.querySelectorAll('#rows tr:last-child input');if(ins1)ins1.focus();},50);
+  setTimeout(()=>{const ins=document.querySelectorAll('#rows tr:last-child input');if(ins[1])ins[1].focus();},50);
   await dbInsert(cur().name,row);
 }
 async function delRow(id){
@@ -414,7 +435,7 @@ function goPage(p){page=p;['expense','summary','settings'].forEach(x=>{
 function shareMonth(){
   const t=cur().rows.reduce((s,x)=>s+Number(x.amount||0),0);
   let txt=`📒 خرج‌یار — هزینه‌های «${cur().name}»\n\n`;
-  cur().rows.forEach((r,i)=>{txt+=`${i+1}. ${r.subject||'—'} | ${money(r.amount)} | ${r.date?fa(r.date):'—'}\n`;});
+  cur().rows.forEach((r,i)=>{txt+=`${i+1}. ${r.subject||'—'} | ${money(r.amount)} | ${r.date?fa(r.date):'—'}${r.bank?' | '+r.bank:''}\n`;});
   txt+=`\nجمع کل: ${money(t)}`;
   const file=new File([txt],cur().name+'.txt',{type:'text/plain'});
   if(navigator.canShare && navigator.canShare({files:[file]}))
@@ -424,30 +445,42 @@ function shareMonth(){
 }
 function exportData(){dl(new Blob([JSON.stringify(allFlat(),null,2)],{type:'application/json'}),'kharj-yar-backup.json');}
 function exportCSV(){
-  let csv='\uFEFF'+'شماره,ماه,موضوع,هزینه (ریال),تاریخ\n';let n=0;
-  months.forEach(m=>m.rows.forEach(r=>{n++;csv+=`${n},"${m.name}","${r.subject||''}",${r.amount||0},"${r.date||''}"\n`;}));
+  let csv='\uFEFF'+'شماره,ماه,موضوع,هزینه (ریال),تاریخ,بانک,توضیحات\n';let n=0;
+  months.forEach(m=>m.rows.forEach(r=>{n++;
+    csv+=`${n},"${m.name}","${r.subject||''}",${r.amount||0},"${r.date||''}","${r.bank||''}","${(r.notes||'').replace(/"/g,'""')}"\n`;}));
   dl(new Blob([csv],{type:'text/csv'}),'kharj-yar.csv');
 }
 function dl(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();toast('فایل ذخیره شد');}
 
-// ---------- وارد کردن: پارسر مقاوم ----------
+// ---------- وارد کردن: پارسر مقاوم ۴.۲ ----------
 function openImport(){
   document.getElementById('impFile').value='';
   document.getElementById('importText').value='';
   document.getElementById('impMonth').value='';
   document.getElementById('impStatus').textContent='';
+  document.getElementById('impReport').classList.add('hidden');
   impDlg.showModal();
 }
 function parseLineSmart(line,lineNo){
   let s=toLatinDigits(line).trim();
   if(!s)return null;
   if(/جمع\s*کل|total/i.test(s))return null;
-  if(/^(شماره|ردیف|row)\b/i.test(s)&&/موضوع|مبلغ|تاریخ|date|amount/i.test(s))return null;
-  let date='';
-  s=s.replace(/(\d{2,4}\D\d{1,2}\D\d{1,2})\s*$/,function(d){
-    date=parseDate(d)||'';
-    return '';
-  });
+  if(/^(شماره|ردیف|row)\b/i.test(s)&&/موضوع|مبلغ|تاریخ|بانک|date|amount/i.test(s))return null;
+  let date='',bank='';
+  // حالت ۱: تاریخ در انتهای خط (بدون بانک)
+  let m=s.match(/(\d{2,4}\D\d{1,2}\D\d{1,2})\s*$/);
+  if(m){
+    date=parseDate(m[1])||'';
+    s=s.slice(0,s.length-m[0].length);
+  }else{
+    // حالت ۲: تاریخ + جداکننده + نام بانک در انتها
+    m=s.match(/(\d{2,4}\D\d{1,2}\D\d{1,2})\s*[-–—:.،]?\s*([^\d]{1,25}?)\s*$/);
+    if(m){
+      date=parseDate(m[1])||'';
+      bank=m[2].replace(/[-–—:.،\s]+$/,'').replace(/^[-–—:.،\s]+/,'').trim();
+      s=s.slice(0,s.length-m[0].length);
+    }
+  }
   s=s.trim().replace(/(:|-|–|—|\s)+$/,'');
   s=s.replace(/^\d+\s*(:|-|–|—|\.|\))\s*/,'').trim();
   let amount=0,okAmt=false;
@@ -460,7 +493,7 @@ function parseLineSmart(line,lineNo){
   if(!okAmt)return {ok:false,reason:'مبلغی پیدا نشد'};
   let subject=s.trim().replace(/(:|-|–|—|\s)+$/,'').trim();
   if(!subject)return {ok:false,reason:'موضوعی پیدا نشد'};
-  return {ok:true,subject,amount,date,lineNo};
+  return {ok:true,subject,amount,date,bank,lineNo};
 }
 function parseTextTable(text){
   const lines=toLatinDigits(text).split(/\r?\n/);
@@ -471,7 +504,7 @@ function parseTextTable(text){
     if(r===null)return;
     if(!r.ok){bad.push('خط '+(i+1)+': '+r.reason);return;}
     if(!r.date)noDate++;
-    records.push({subject:r.subject,amount:r.amount,date:r.date});
+    records.push({subject:r.subject,amount:r.amount,date:r.date,bank:r.bank||''});
   });
   return {records,bad,noDate};
 }
@@ -480,9 +513,10 @@ async function doImport(){
   const monthName=document.getElementById('impMonth').value.trim();
   if(!monthName){st.textContent='⚠️ نام ماه را بنویس';return;}
   st.textContent='⏳ در حال خواندن…';
+  document.getElementById('impReport').classList.add('hidden');
   let parsed=null;
   const fInput=document.getElementById('impFile');
-  const file=fInput&&fInput.files&&fInput.files0;
+  const file=fInput&&fInput.files&&fInput.files[0];
   const txt=document.getElementById('importText').value.trim();
   try{
     if(file){
@@ -500,7 +534,7 @@ async function doImport(){
         }
         const buf=await file.arrayBuffer();
         const wb=XLSX.read(buf,{type:'array'});
-        const ws=wb.Sheets[wb.SheetNames0];
+        const ws=wb.Sheets[wb.SheetNames[0]];
         parsed=parseTextTable(XLSX.utils.sheet_to_csv(ws,{FS:'\t',raw:true}));
       }else{
         const text=await file.text();
@@ -512,11 +546,34 @@ async function doImport(){
       st.textContent='⚠️ فایل انتخاب کن یا متن پیست کن';return;
     }
     const records=parsed.records.filter(r=>r.subject||r.amount||r.date);
+    pendingRecords=records;
+    pendingParsed={monthName:monthName,noDate:parsed.noDate,bad:parsed.bad};
     if(!records.length){
-      st.textContent='❌ هیچ ردیفی شناسایی نشد'+(parsed.bad.length?'\n'+parsed.bad.slice(0,6).join('\n'):'');
+      st.textContent='❌ هیچ ردیفی شناسایی نشد'+(parsed.bad.length?'\n'+parsed.bad.slice(0,8).join('\n'):'');
       return;
     }
-    st.textContent=`⏳ ${fa(records.length)} ردیف شناسایی شد — در حال ثبت…`;
+    if(parsed.bad.length){
+      // گزارش خطوط ردشده + درخواست تأیید
+      st.textContent=`${fa(records.length)} ردیف صحیح شناسایی شد، ${fa(parsed.bad.length)} خط رد شد:`;
+      document.getElementById('impReportBody').textContent=parsed.bad.slice(0,10).join('\n')+(parsed.bad.length>10?'\n… و '+(parsed.bad.length-10)+' مورد دیگر':'');
+      document.getElementById('impReport').classList.remove('hidden');
+      return;
+    }
+    await proceedImport();
+  }catch(e){
+    st.textContent='❌ خطا: '+(e.message||e);
+    console.error(e);
+  }
+}
+async function proceedImport(){
+  if(!pendingRecords||!pendingParsed)return;
+  const st=document.getElementById('impStatus');
+  const monthName=pendingParsed.monthName;
+  const records=pendingRecords;
+  const noDate=pendingParsed.noDate;
+  document.getElementById('impReport').classList.add('hidden');
+  try{
+    st.textContent=`⏳ در حال ثبت ${fa(records.length)} ردیف…`;
     monthsOrder.push(monthName);
     api('/months_list',{method:'POST',prefer:'return=minimal',body:{name:monthName,sort:monthsOrder.length}}).catch(()=>{});
     try{
@@ -531,13 +588,18 @@ async function doImport(){
     current=ci>=0?ci:0;
     render();
     let msg=`✅ ${fa(records.length)} ردیف وارد ماه «${monthName}» شد`;
-    if(parsed.noDate)msg+=`\n⚠️ ${fa(parsed.noDate)} ردیف بدون تاریخ`;
-    if(parsed.bad.length)msg+=`\n⚠️ ${fa(parsed.bad.length)} خط نامعتبر رد شد:\n`+parsed.bad.slice(0,4).join('\n');
+    if(noDate)msg+=`\n⚠️ ${fa(noDate)} ردیف بدون تاریخ`;
     toast(msg);
+    pendingRecords=null;pendingParsed=null;
   }catch(e){
     st.textContent='❌ خطا: '+(e.message||e);
     console.error(e);
   }
+}
+function cancelImport(){
+  document.getElementById('impReport').classList.add('hidden');
+  document.getElementById('impStatus').textContent='⚠️ وارد کردن لغو شد — متن را اصلاح کن و دوباره «وارد کردن» را بزن';
+  pendingRecords=null;pendingParsed=null;
 }
 
 // ---------- month management ----------
