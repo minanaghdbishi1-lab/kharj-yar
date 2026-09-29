@@ -98,7 +98,7 @@
       <button class="btn" onclick="exportCSV()">📄 خروجی اکسل (CSV)</button>
     </div>
     <div class="card" style="font-size:12px;color:var(--muted);text-align:center;">
-      خرج‌یار — نسخه ۴.۱ — پارسر مقاوم<br>
+      خرج‌یار — نسخه ۴.۱.۱ — پارسر مقاوم<br>
       💡 برای تغییر نام یا حذف ماه: لمس طولانی (یا کلیک راست) روی تب ماه
     </div>
   </section>
@@ -187,9 +187,9 @@ function serialToJalali(n){
   n=Math.round(Number(n));
   if(n<20000||n>80000)return null;
   const d=new Date(Date.UTC(1899,11,30)+n*86400000);
-  const [jy,jm,jd]=g2j(d.getUTCFullYear(),d.getUTCMonth()+1,d.getUTCDate());
-  if(jy<1200||jy>1500)return null;
-  return jy+'/'+String(jm).padStart(2,'0')+'/'+String(jd).padStart(2,'0');
+  const j=g2j(d.getUTCFullYear(),d.getUTCMonth()+1,d.getUTCDate());
+  if(j[0]<1200||j[0]>1500)return null;
+  return j[0]+'/'+String(j[1]).padStart(2,'0')+'/'+String(j[2]).padStart(2,'0');
 }
 function parseDate(raw){
   if(raw===null||raw===undefined||raw==='')return null;
@@ -389,7 +389,7 @@ async function addRow(){
   const row={id:null,subject:'',amount:0,date:''};
   cur().rows.push(row);
   render();
-  setTimeout(()=>{const ins=document.querySelectorAll('#rows tr:last-child input');if(ins[1])ins[1].focus();},50);
+  setTimeout(()=>{const ins=document.querySelectorAll('#rows tr:last-child input');if(ins1)ins1.focus();},50);
   await dbInsert(cur().name,row);
 }
 async function delRow(id){
@@ -430,40 +430,50 @@ function exportCSV(){
 }
 function dl(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();toast('فایل ذخیره شد');}
 
-// ---------- پارسر مقاوم (نسخه ۴.۱) ----------
-// منطق: تاریخ از انتها جدا، مبلغ = آخرین گروه عددی، بقیه = موضوع.
-// بدون وابستگی به اندیس‌های شکننده match؛ خطوط نامعتبر گزارش می‌شوند نه کرش.
+// ---------- وارد کردن: پارسر مقاوم ----------
+function openImport(){
+  document.getElementById('impFile').value='';
+  document.getElementById('importText').value='';
+  document.getElementById('impMonth').value='';
+  document.getElementById('impStatus').textContent='';
+  impDlg.showModal();
+}
 function parseLineSmart(line,lineNo){
   let s=toLatinDigits(line).trim();
   if(!s)return null;
   if(/جمع\s*کل|total/i.test(s))return null;
   if(/^(شماره|ردیف|row)\b/i.test(s)&&/موضوع|مبلغ|تاریخ|date|amount/i.test(s))return null;
   let date='';
-  const tm=s.match(/(\d{2,4}[\/.\-]\d{1,2}[\/.\-]\d{1,2})\s*$/);
-  if(tm){date=parseDate(tm[1])||'';s=s.slice(0,s.length-tm[0].length);}
-  s=s.trim().replace(/[-–—:\s]+$/,'');
-  s=s.replace(/^\d+\s*[-–—.)]\s*/,'').trim();
-  const am=s.match(/(\d[\d.,،٬]*\d|\d)\s*$/);
-  if(!am)return {ok:false,reason:'مبلغی پیدا نشد'};
-  const digits=am[1].replace(/[.,،٬\s]/g,'');
-  const amount=Number(digits);
-  if(!amount)return {ok:false,reason:'مبلغ نامعتبر: «'+am[1]+'»'};
-  let subject=s.slice(0,s.length-am[0].length).trim().replace(/[:：]\s*$/,'').trim();
+  s=s.replace(/(\d{2,4}\D\d{1,2}\D\d{1,2})\s*$/,function(d){
+    date=parseDate(d)||'';
+    return '';
+  });
+  s=s.trim().replace(/(:|-|–|—|\s)+$/,'');
+  s=s.replace(/^\d+\s*(:|-|–|—|\.|\))\s*/,'').trim();
+  let amount=0,okAmt=false;
+  s=s.replace(/(\d(?:\d|\.|,|،|٬)+|\d)\s*$/,function(g){
+    const d=g.replace(/\D/g,'');
+    const n=Number(d);
+    if(n>0){amount=n;okAmt=true;return '';}
+    return g;
+  });
+  if(!okAmt)return {ok:false,reason:'مبلغی پیدا نشد'};
+  let subject=s.trim().replace(/(:|-|–|—|\s)+$/,'').trim();
   if(!subject)return {ok:false,reason:'موضوعی پیدا نشد'};
   return {ok:true,subject,amount,date,lineNo};
 }
 function parseTextTable(text){
   const lines=toLatinDigits(text).split(/\r?\n/);
-  const rows=[],bad=[];let noDate=0;
-  lines.forEach((line,i)=>{
+  const records=[],bad=[];let noDate=0;
+  lines.forEach(function(line,i){
     const l=line.trim();if(!l)return;
     const r=parseLineSmart(l,i+1);
     if(r===null)return;
-    if(!r.ok){bad.push(`خط ${i+1}: ${r.reason}`);return;}
+    if(!r.ok){bad.push('خط '+(i+1)+': '+r.reason);return;}
     if(!r.date)noDate++;
-    rows.push([r.subject,String(r.amount),r.date]);
+    records.push({subject:r.subject,amount:r.amount,date:r.date});
   });
-  return {rows,bad,noDate};
+  return {records,bad,noDate};
 }
 async function doImport(){
   const st=document.getElementById('impStatus');
@@ -472,7 +482,7 @@ async function doImport(){
   st.textContent='⏳ در حال خواندن…';
   let parsed=null;
   const fInput=document.getElementById('impFile');
-  const file=fInput&&fInput.files&&fInput.files[0];
+  const file=fInput&&fInput.files&&fInput.files0;
   const txt=document.getElementById('importText').value.trim();
   try{
     if(file){
@@ -490,7 +500,7 @@ async function doImport(){
         }
         const buf=await file.arrayBuffer();
         const wb=XLSX.read(buf,{type:'array'});
-        const ws=wb.Sheets[wb.SheetNames[0]];
+        const ws=wb.Sheets[wb.SheetNames0];
         parsed=parseTextTable(XLSX.utils.sheet_to_csv(ws,{FS:'\t',raw:true}));
       }else{
         const text=await file.text();
@@ -501,25 +511,7 @@ async function doImport(){
     }else{
       st.textContent='⚠️ فایل انتخاب کن یا متن پیست کن';return;
     }
-    const records=parsed.rows.map(c=>{
-      let amount=0,date='',subject='';
-      for(const c2 of c){
-        const cs=String(c2==null?'':c2).trim();
-        if(!cs)continue;
-        if(!date){const p=parseDate(cs);if(p){date=p;continue;}}
-        const num=cs.replace(/[,\s،٬.]/g,'');
-        if(/^\d+$/.test(num))amount=Math.max(amount,Number(num));
-      }
-      for(const c2 of c){
-        const cs=String(c2==null?'':c2).trim();
-        if(!cs)continue;
-        if(date&&parseDate(cs)===date)continue;
-        const num=cs.replace(/[,\s،٬.]/g,'');
-        if(/^\d+$/.test(num)&&Number(num)===amount)continue;
-        if(!subject&&/[^\d\s.,\/]/.test(cs))subject=cs;
-      }
-      return {subject,amount,date};
-    }).filter(r=>r.subject||r.amount||r.date);
+    const records=parsed.records.filter(r=>r.subject||r.amount||r.date);
     if(!records.length){
       st.textContent='❌ هیچ ردیفی شناسایی نشد'+(parsed.bad.length?'\n'+parsed.bad.slice(0,6).join('\n'):'');
       return;
@@ -539,7 +531,7 @@ async function doImport(){
     current=ci>=0?ci:0;
     render();
     let msg=`✅ ${fa(records.length)} ردیف وارد ماه «${monthName}» شد`;
-    if(parsed.noDate)msg+=`\n⚠️ ${fa(parsed.noDate)} ردیف بدون تاریخ (به انتهای لیست می‌روند)`;
+    if(parsed.noDate)msg+=`\n⚠️ ${fa(parsed.noDate)} ردیف بدون تاریخ`;
     if(parsed.bad.length)msg+=`\n⚠️ ${fa(parsed.bad.length)} خط نامعتبر رد شد:\n`+parsed.bad.slice(0,4).join('\n');
     toast(msg);
   }catch(e){
