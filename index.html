@@ -17,6 +17,7 @@
   .tabs{display:flex;gap:8px;overflow-x:auto;padding:10px 12px;background:var(--card);border-bottom:1px solid #e5e5e5;}
   .tab{padding:8px 14px;border-radius:20px;background:#eee;white-space:nowrap;border:none;font-size:14px;-webkit-user-select:none;user-select:none;}
   .tab.active{background:var(--accent);color:#fff;}
+  .tab.dragging{background:var(--accent2);color:#fff;transform:scale(1.05);box-shadow:0 2px 8px rgba(0,0,0,.25);}
   main{padding:12px;}
   .card{background:var(--card);border-radius:14px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:12px;}
   table{width:100%;border-collapse:collapse;font-size:13px;}
@@ -101,8 +102,8 @@
       <button class="btn" onclick="exportCSV()">📄 خروجی اکسل (CSV)</button>
     </div>
     <div class="card" style="font-size:12px;color:var(--muted);text-align:center;">
-      خرج‌یار — نسخه ۴.۲ — بانک + یادداشت + گزارش خطوط Import<br>
-      💡 یادداشت: روی 📝 کنار شماره ردیف بزن | تغییر نام/حذف ماه: لمس طولانی روی تب
+      خرج‌یار — نسخه ۴.۲.۱ — بانک + یادداشت + درگ تب‌ها<br>
+      💡 جابه‌جایی تب: لمس طولانی و بکش | یادداشت: دکمه 📝 | نام/حذف ماه: کلیک راست
     </div>
   </section>
 </main>
@@ -162,9 +163,10 @@ let months=[{name:'ماه اول',rows:[]}];
 let monthsOrder=[];
 let current=0, page='expense';
 let online=false;
-let ctxIndex=-1, longPressTimer=null, longPressFired=false;
+let ctxIndex=-1;
 let refreshTimer=null;
 let pendingRecords=null, pendingParsed=null;
+let dragTimer=null,dragIdx=-1,dragActive=false,dragMoved=false;
 const fa=n=>String(n).replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d]);
 const money=n=>fa(String(Math.round(Number(n)||0)).replace(/\B(?=(\d{3})+(?!\d))/g,'.'))+' ریال';
 const cur=()=>months[current]||months[0];
@@ -333,14 +335,40 @@ function render(){
   months.forEach((m,i)=>{
     const b=document.createElement('button');b.className='tab'+(i===current?' active':'');
     b.textContent=fa(m.name);
-    b.addEventListener('click',()=>{if(longPressFired)return;current=i;render();});
-    b.addEventListener('touchstart',e=>{
-      longPressFired=false;const t=e.touches[0];
-      longPressTimer=setTimeout(()=>{longPressFired=true;showCtx(i,t.clientX,t.clientY);},500);
-    },{passive:true});
-    b.addEventListener('touchend',()=>clearTimeout(longPressTimer));
-    b.addEventListener('touchmove',()=>clearTimeout(longPressTimer));
+    b.dataset.idx=i;
+    b.addEventListener('click',()=>{if(dragMoved)return;current=i;render();});
     b.addEventListener('contextmenu',e=>{e.preventDefault();showCtx(i,e.clientX,e.clientY);});
+    b.addEventListener('touchstart',e=>{
+      dragMoved=false;
+      dragIdx=i;
+      const t=e.touches[0];
+      dragTimer=setTimeout(()=>{
+        dragActive=true;b.classList.add('dragging');
+        if(navigator.vibrate)navigator.vibrate(30);
+      },400);
+    },{passive:true});
+    b.addEventListener('touchmove',e=>{
+      if(!dragActive)return;
+      e.preventDefault();
+      const t=e.touches[0];
+      const el=document.elementFromPoint(t.clientX,t.clientY);
+      if(el&&el.classList&&el.classList.contains('tab')&&el.dataset.idx!==undefined){
+        const j=Number(el.dataset.idx);
+        if(j!==dragIdx){
+          const mm=months.splice(dragIdx,1);
+          months.splice(j,0,mm[0]);
+          current=j;
+          dragIdx=j;
+          render();
+          dragMoved=true;
+        }
+      }
+    });
+    b.addEventListener('touchend',()=>{
+      clearTimeout(dragTimer);
+      if(dragActive){dragActive=false;persistOrder();}
+      setTimeout(()=>{dragMoved=false;},100);
+    });
     tb.appendChild(b);
   });
   const add=document.createElement('button');add.className='tab';add.textContent='＋ ماه جدید';
@@ -361,6 +389,13 @@ function render(){
     r.appendChild(tr);
   });
   updateTotal();
+}
+function persistOrder(){
+  monthsOrder=months.map(x=>x.name);
+  monthsOrder.forEach((n,k)=>{
+    api('/months_list?name=eq.'+encodeURIComponent(n),{method:'PATCH',body:{sort:k+1}}).catch(()=>{});
+  });
+  render();
 }
 let editTimers={};
 function editAmount(id,inp){
@@ -467,13 +502,11 @@ function parseLineSmart(line,lineNo){
   if(/جمع\s*کل|total/i.test(s))return null;
   if(/^(شماره|ردیف|row)\b/i.test(s)&&/موضوع|مبلغ|تاریخ|بانک|date|amount/i.test(s))return null;
   let date='',bank='';
-  // حالت ۱: تاریخ در انتهای خط (بدون بانک)
   let m=s.match(/(\d{2,4}\D\d{1,2}\D\d{1,2})\s*$/);
   if(m){
     date=parseDate(m[1])||'';
     s=s.slice(0,s.length-m[0].length);
   }else{
-    // حالت ۲: تاریخ + جداکننده + نام بانک در انتها
     m=s.match(/(\d{2,4}\D\d{1,2}\D\d{1,2})\s*[-–—:.،]?\s*([^\d]{1,25}?)\s*$/);
     if(m){
       date=parseDate(m[1])||'';
@@ -553,7 +586,6 @@ async function doImport(){
       return;
     }
     if(parsed.bad.length){
-      // گزارش خطوط ردشده + درخواست تأیید
       st.textContent=`${fa(records.length)} ردیف صحیح شناسایی شد، ${fa(parsed.bad.length)} خط رد شد:`;
       document.getElementById('impReportBody').textContent=parsed.bad.slice(0,10).join('\n')+(parsed.bad.length>10?'\n… و '+(parsed.bad.length-10)+' مورد دیگر':'');
       document.getElementById('impReport').classList.remove('hidden');
@@ -607,20 +639,21 @@ async function renameMonth(i,newName){
   const m=months[i];const old=m.name;
   monthsOrder=monthsOrder.map(n=>n===old?newName:n);
   m.name=newName;render();
-  for(const r of m.rows){
-    try{await api('/expenses?id=eq.'+r.id,{method:'PATCH',body:{month:newName}});}
-    catch(e){toast('خطا: '+(e.message||e));return;}
-  }
+  try{
+    await api('/expenses?month=eq.'+encodeURIComponent(old),{method:'PATCH',body:{month:newName}});
+  }catch(e){toast('خطا: '+(e.message||e));return;}
   try{await api('/months_list?name=eq.'+encodeURIComponent(old),{method:'PATCH',body:{name:newName}});}catch(e){}
   toast('نام ماه عوض شد ✅');
 }
 async function deleteMonth(i){
   const m=months[i];const n=m.rows.length;
-  let msg=`ماه «${m.name}» حذف شود؟`;
-  if(n>0)msg=`ماه «${m.name}» شامل ${fa(n)} ردیف هزینه است!\nبا حذف، همه این هزینه‌ها (از دیتابیس هم) پاک می‌شوند. مطمئنی؟`;
+  let msg='ماه «'+m.name+'» حذف شود؟';
+  if(n>0)msg='ماه «'+m.name+'» شامل '+fa(n)+' ردیف هزینه است!\nبا حذف، همه این هزینه‌ها (از دیتابیس هم) پاک می‌شوند. مطمئنی؟';
   if(!confirm(msg))return;
   if(n>0 && !confirm('مطمئن هستی؟ این عمل قابل بازگشت نیست'))return;
-  for(const r of m.rows){try{await api('/expenses?id=eq.'+r.id,{method:'DELETE'});}catch(e){}}
+  try{
+    await api('/expenses?month=eq.'+encodeURIComponent(m.name),{method:'DELETE'});
+  }catch(e){toast('خطا: '+(e.message||e));return;}
   try{await api('/months_list?name=eq.'+encodeURIComponent(m.name),{method:'DELETE'});}catch(e){}
   months.splice(i,1);monthsOrder=monthsOrder.filter(x=>x!==m.name);
   if(!months.length){months=[{name:'ماه اول',rows:[]}];monthsOrder=['ماه اول'];
@@ -635,10 +668,7 @@ function moveMonth(i){
   if(isNaN(j)||j<0||j>=months.length)return toast('شماره نامعتبر است');
   if(j===i)return;
   const [m]=months.splice(i,1);months.splice(j,0,m);
-  monthsOrder=months.map(x=>x.name);
-  monthsOrder.forEach((n,k)=>{
-    api('/months_list?name=eq.'+encodeURIComponent(n),{method:'PATCH',body:{sort:k+1}}).catch(()=>{});
-  });
+  persistOrder();
   current=j;render();toast('ترتیب تغییر کرد ✅');
 }
 function showCtx(i,x,y){
@@ -646,7 +676,7 @@ function showCtx(i,x,y){
   const m=document.getElementById('ctxMenu');m.innerHTML='';
   const mk=(label,cls,fn)=>{const b=document.createElement('button');b.textContent=label;if(cls)b.className=cls;b.onclick=()=>{m.classList.add('hidden');fn();};m.appendChild(b);};
   mk('✏️ تغییر نام ماه','',()=>{const nm=prompt('نام جدید ماه:',months[ctxIndex].name);if(nm&&nm.trim())renameMonth(ctxIndex,nm.trim());});
-  mk('↔️ جابه‌جایی ترتیب','',()=>moveMonth(i));
+  mk('↔️ جابه‌جایی ترتیب (شماره‌ای)','',()=>moveMonth(i));
   mk('🗑️ حذف این ماه','danger',()=>deleteMonth(i));
   m.classList.remove('hidden');
   const w=m.offsetWidth,h=m.offsetHeight;
