@@ -37,7 +37,13 @@
   .btn{display:block;width:100%;padding:12px;margin-top:8px;border:none;border-radius:12px;font-size:15px;background:#eee;color:var(--text);}
   .btn.primary{background:var(--accent);color:#fff;}
   .btn.blue{background:var(--accent2);color:#fff;}
+  .btn.green{background:var(--text);color:#fff;}
+  .btn.sm{padding:9px;font-size:13px;margin-top:4px;}
   .toolbar{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .toolbar3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+  .searchbar{display:flex;gap:8px;align-items:center;}
+  .searchbar input[type=text]{flex:1;padding:10px 12px;border:1px solid #ddd;border-radius:10px;font-size:14px;}
+  .searchbar label{white-space:nowrap;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:4px;}
   .menu{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid #e5e5e5;display:flex;justify-content:space-around;padding:10px 4px;padding-bottom:calc(10px + env(safe-area-inset-bottom));}
   .menu button{background:none;border:none;font-size:11px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px;}
   .menu button .ic{font-size:20px;}
@@ -69,21 +75,36 @@
 
 <main>
   <section id="page-expense">
+    <div class="card searchbar">
+      <input type="text" id="searchBox" placeholder="🔍 جستجو (موضوع، بانک، توضیحات، تاریخ)…" oninput="onSearch(this.value)">
+      <label><input type="checkbox" id="searchAll" onchange="onSearch(document.getElementById('searchBox').value)"> همه ماه‌ها</label>
+    </div>
     <div class="card">
       <table>
-        <thead><tr><th style="width:28px">#</th><th style="width:26px">یادداشت</th><th>موضوع</th><th style="width:100px">مبلغ (ریال)</th><th style="width:95px">تاریخ</th><th style="width:60px">بانک</th><th style="width:24px"></th></tr></thead>
+        <thead id="tblHead"><tr><th style="width:28px">#</th><th style="width:26px">یادداشت</th><th>موضوع</th><th style="width:100px">مبلغ (ریال)</th><th style="width:95px">تاریخ</th><th style="width:60px">بانک</th><th style="width:24px"></th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
       <button class="btn" onclick="addRow()">＋ افزودن ردیف</button>
     </div>
-    <div class="card total">
+    <div class="card hidden" id="searchTools">
+      <div class="total" style="margin-bottom:8px;">
+        <span id="searchCount"></span><span id="searchTotal"></span>
+      </div>
+      <div class="toolbar3">
+        <button class="btn green sm" onclick="printSearch()">🖨️ PDF / پرینت</button>
+        <button class="btn blue sm" onclick="searchCSV()">📊 اکسل (CSV)</button>
+        <button class="btn sm" onclick="clearSearch()">✖️ پاک کردن جستجو</button>
+      </div>
+    </div>
+    <div class="card total" id="monthTotalCard">
       <span>جمع کل این ماه:</span><span id="total">۰ ریال</span>
     </div>
-    <div class="card toolbar">
-      <button class="btn primary" onclick="window.print()">🖨️ پرینت / PDF</button>
-      <button class="btn blue" onclick="shareMonth()">📤 اشتراک‌گذاری ماه</button>
+    <div class="card toolbar" id="monthTools">
+      <button class="btn primary" onclick="window.print()">🖨️ پرینت / PDF ماه</button>
+      <button class="btn blue" onclick="shareMonth()">📤 اشتراک متنی</button>
     </div>
-    <div class="card toolbar">
+    <div class="card toolbar" id="monthTools2">
+      <button class="btn green" onclick="monthCSV()">📊 اکسل این ماه (CSV)</button>
       <button class="btn" onclick="openImport()" style="background:#7c4dbe;color:#fff;">📥 وارد کردن از فایل / متن</button>
     </div>
   </section>
@@ -103,11 +124,11 @@
     <div class="card">
       <h3 style="margin-bottom:6px;">پشتیبان‌گیری</h3>
       <button class="btn blue" onclick="exportData()">💾 خروجی کل داده‌ها</button>
-      <button class="btn" onclick="exportCSV()">📄 خروجی اکسل (CSV)</button>
+      <button class="btn" onclick="exportCSV()">📄 خروجی اکسل (CSV) — همه</button>
     </div>
     <div class="card" style="font-size:12px;color:var(--muted);text-align:center;">
-      خرج‌یار — نسخه ۵.۰ — سال‌بندی + درگ (موبایل و دسکتاپ)<br>
-      💡 جابه‌جایی ماه: نگه دار و بکش (لمس یا موس) | یادداشت: 📝 | نام/حذف ماه: کلیک راست روی تب
+      خرج‌یار — نسخه ۵.۱ — جستجو + خروجی اکسل/PDF<br>
+      💡 جستجو در موضوع/بانک/توضیحات/تاریخ؛ با تیک «همه ماه‌ها» سراسری می‌شود
     </div>
   </section>
 </main>
@@ -166,7 +187,7 @@ const API = SUPABASE_URL.replace(/\/+$/,'') + '/rest/v1';
 const impDlg = document.getElementById('impDlg');
 const dlg = document.getElementById('dlg');
 
-let months=[];               // [{name,year,seq,rows:[{id,subject,amount,date,bank,notes,seq}]}]
+let months=[];
 let currentYear='۱۴۰۵';
 let currentName='';
 let page='expense';
@@ -174,6 +195,7 @@ let online=false;
 let refreshTimer=null;
 let pendingRecords=null, pendingParsed=null;
 let dragTimer=null, dragSt=null;
+let searchTerm='';
 const fa=n=>String(n).replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d]);
 const money=n=>fa(String(Math.round(Number(n)||0)).replace(/\B(?=(\d{3})+(?!\d))/g,'.'))+' ریال';
 const cur=()=>months.find(m=>m.name===currentName)||months[0];
@@ -311,7 +333,7 @@ async function refresh(silent=true){
     rebuild(data,ml);
     render();
     if(!online){online=true;setDot('ok');
-      document.getElementById('dbInfo').textContent='✅ متصل به دیتابیس — سال‌بندی، بانک و یادداشت فعال';}
+      document.getElementById('dbInfo').textContent='✅ متصل به دیتابیس — سال‌بندی، بانک، یادداشت و جستجو فعال';}
     else if(!silent)toast('به‌روزرسانی شد ✅');
   }catch(e){
     online=false;setDot('err');
@@ -346,6 +368,37 @@ async function dbDelete(id){
   if(!id)return;
   try{await api('/expenses?id=eq.'+id,{method:'DELETE'});}
   catch(e){toast('خطای حذف: '+(e.message||e));}
+}
+
+// ---------- جستجو ----------
+function onSearch(v){
+  searchTerm=v.trim();
+  renderRows();
+}
+function clearSearch(){
+  searchTerm='';
+  document.getElementById('searchBox').value='';
+  renderRows();
+}
+function searchResults(){
+  const t=searchTerm;
+  if(!t)return [];
+  const tl=toLatinDigits(t).toLowerCase();
+  const tf=t.toLowerCase();
+  const hit=(r,m)=>{
+    const hay=((r.subject||'')+' '+(r.bank||'')+' '+(r.notes||'')+' '+(r.date||'')+' '+(m?m.name:'')).toLowerCase();
+    const hayL=toLatinDigits(hay);
+    return hay.indexOf(tf)>=0||hayL.indexOf(tl)>=0;
+  };
+  const all=document.getElementById('searchAll')&&document.getElementById('searchAll').checked;
+  const pool=all?months:(cur()?[cur()]:[]);
+  const out=[];
+  pool.forEach(m=>{
+    m.rows.forEach(r=>{
+      if(hit(r,m))out.push({month:m,row:r});
+    });
+  });
+  return out;
 }
 
 // ---------- رندر ----------
@@ -449,21 +502,62 @@ function persistSort(){
   });
 }
 function renderRows(){
-  const r=document.getElementById('rows');r.innerHTML='';
-  const m=cur();
-  if(m){
-    m.rows.forEach((row,i)=>{
+  const r=document.getElementById('rows');
+  const head=document.getElementById('tblHead');
+  const st=document.getElementById('searchTools');
+  const mtc=document.getElementById('monthTotalCard');
+  const mto=document.getElementById('monthTools');
+  const mto2=document.getElementById('monthTools2');
+  r.innerHTML='';
+  if(searchTerm){
+    const res=searchResults();
+    const all=document.getElementById('searchAll')&&document.getElementById('searchAll').checked;
+    head.innerHTML=all
+      ?'<tr><th style="width:28px">#</th><th>ماه</th><th>موضوع</th><th style="width:100px">مبلغ (ریال)</th><th style="width:95px">تاریخ</th><th style="width:60px">بانک</th><th style="width:24px"></th></tr>'
+      :'<tr><th style="width:28px">#</th><th>موضوع</th><th style="width:100px">مبلغ (ریال)</th><th style="width:95px">تاریخ</th><th style="width:60px">بانک</th><th style="width:24px"></th></tr>';
+    st.classList.remove('hidden');
+    mtc.classList.add('hidden');
+    mto.classList.add('hidden');
+    mto2.classList.add('hidden');
+    let sum=0;
+    res.forEach((item,i)=>{
+      const row=item.row,m=item.month;
+      sum+=Number(row.amount||0);
       const tr=document.createElement('tr');
       const hasNote=row.notes&&row.notes.trim();
-      tr.innerHTML='<td style="color:#bbb;font-size:12px">'+fa(i+1)+'</td>'
-        +'<td><button class="notebtn'+(hasNote?' has':'')+'" title="'+(row.notes||'').replace(/"/g,'&quot;')+'" onclick="editNote(\''+row.id+'\')">'+(hasNote?'🗒️':'📝')+'</button></td>'
-        +'<td><input value="'+(row.subject||'').replace(/"/g,'&quot;')+'" placeholder="موضوع" oninput="editRow(\''+row.id+'\',\'subject\',this.value)"></td>'
-        +'<td class="amount"><input type="text" inputmode="numeric" value="'+(row.amount?groupDigits(String(Math.round(row.amount))):'')+'" placeholder="۰" oninput="editAmount(\''+row.id+'\',this)"></td>'
-        +'<td><input type="text" inputmode="numeric" value="'+(row.date?fa(row.date):'')+'" placeholder="۱۴۰۵/۰۷/۰۱" oninput="editRow(\''+row.id+'\',\'date\',this.value)" onchange="blurDate(\''+row.id+'\',this)"></td>'
-        +'<td><input type="text" value="'+(row.bank||'').replace(/"/g,'&quot;')+'" placeholder="بانک" oninput="editRow(\''+row.id+'\',\'bank\',this.value)"></td>'
+      let h='<td style="color:#bbb;font-size:12px">'+fa(i+1)+'</td>';
+      if(all)h+='<td style="font-size:11px;color:#666;white-space:nowrap">'+fa(m.name)+'</td>';
+      h+='<td><input value="'+(row.subject||'').replace(/"/g,'&quot;')+'" oninput="editRow(\''+row.id+'\',\'subject\',this.value)"></td>'
+        +'<td class="amount"><input type="text" inputmode="numeric" value="'+(row.amount?groupDigits(String(Math.round(row.amount))):'')+'" oninput="editAmount(\''+row.id+'\',this)"></td>'
+        +'<td style="white-space:nowrap;font-size:12px">'+(row.date?fa(row.date):'—')+'</td>'
+        +'<td><input type="text" value="'+(row.bank||'').replace(/"/g,'&quot;')+'" oninput="editRow(\''+row.id+'\',\'bank\',this.value)"></td>'
         +'<td><button class="rowdel" onclick="delRow(\''+row.id+'\')">✕</button></td>';
+      tr.innerHTML=h;
       r.appendChild(tr);
     });
+    document.getElementById('searchCount').textContent=fa(res.length)+' مورد یافت شد';
+    document.getElementById('searchTotal').textContent='جمع: '+money(sum);
+  }else{
+    head.innerHTML='<tr><th style="width:28px">#</th><th style="width:26px">یادداشت</th><th>موضوع</th><th style="width:100px">مبلغ (ریال)</th><th style="width:95px">تاریخ</th><th style="width:60px">بانک</th><th style="width:24px"></th></tr>';
+    st.classList.add('hidden');
+    mtc.classList.remove('hidden');
+    mto.classList.remove('hidden');
+    mto2.classList.remove('hidden');
+    const m=cur();
+    if(m){
+      m.rows.forEach((row,i)=>{
+        const tr=document.createElement('tr');
+        const hasNote=row.notes&&row.notes.trim();
+        tr.innerHTML='<td style="color:#bbb;font-size:12px">'+fa(i+1)+'</td>'
+          +'<td><button class="notebtn'+(hasNote?' has':'')+'" title="'+(row.notes||'').replace(/"/g,'&quot;')+'" onclick="editNote(\''+row.id+'\')">'+(hasNote?'🗒️':'📝')+'</button></td>'
+          +'<td><input value="'+(row.subject||'').replace(/"/g,'&quot;')+'" placeholder="موضوع" oninput="editRow(\''+row.id+'\',\'subject\',this.value)"></td>'
+          +'<td class="amount"><input type="text" inputmode="numeric" value="'+(row.amount?groupDigits(String(Math.round(row.amount))):'')+'" placeholder="۰" oninput="editAmount(\''+row.id+'\',this)"></td>'
+          +'<td><input type="text" inputmode="numeric" value="'+(row.date?fa(row.date):'')+'" placeholder="۱۴۰۵/۰۷/۰۱" oninput="editRow(\''+row.id+'\',\'date\',this.value)" onchange="blurDate(\''+row.id+'\',this)"></td>'
+          +'<td><input type="text" value="'+(row.bank||'').replace(/"/g,'&quot;')+'" placeholder="بانک" oninput="editRow(\''+row.id+'\',\'bank\',this.value)"></td>'
+          +'<td><button class="rowdel" onclick="delRow(\''+row.id+'\')">✕</button></td>';
+        r.appendChild(tr);
+      });
+    }
   }
   updateTotal();
 }
@@ -551,6 +645,33 @@ function shareMonth(){
   else if(navigator.share)navigator.share({text:txt}).catch(()=>{});
   else toast('از خروجی فایل استفاده کن');
 }
+function monthCSV(){
+  const m=cur();if(!m)return;
+  let csv='\uFEFF'+'سال,ماه,موضوع,مبلغ (ریال),تاریخ,بانک,توضیحات\n';
+  m.rows.forEach(r=>{
+    csv+='"'+m.year+'","'+m.name+'","'+(r.subject||'')+'",'+(r.amount||0)+',"'+(r.date||'')+'","'+(r.bank||'')+'","'+(r.notes||'').replace(/"/g,'""')+'"\n';
+  });
+  dl(new Blob([csv],{type:'text/csv'}),m.name+'.csv');
+}
+function searchCSV(){
+  const res=searchResults();
+  if(!res.length)return toast('نتیجه‌ای برای خروجی نیست');
+  const all=document.getElementById('searchAll')&&document.getElementById('searchAll').checked;
+  let csv='\uFEFF'+(all?'سال,ماه,':'')+'موضوع,مبلغ (ریال),تاریخ,بانک\n';
+  res.forEach(item=>{
+    const r=item.row;
+    if(all)csv+='"'+item.month.year+'","'+item.month.name+'",';
+    csv+='"'+(r.subject||'')+'",'+(r.amount||0)+',"'+(r.date||'')+'","'+(r.bank||'')+'"\n';
+  });
+  csv+='\nجمع کل,"'+'"'.replace(/""/g,'"')+'"\n';
+  dl(new Blob([csv],{type:'text/csv'}),'search-results.csv');
+}
+function printSearch(){
+  const h=document.getElementById('printHeader');
+  h.style.display='block';
+  h.innerHTML='<h2>خرج‌یار — نتایج جستجو: «'+fa(searchTerm)+'»</h2>';
+  setTimeout(()=>{window.print();},50);
+}
 function exportData(){dl(new Blob([JSON.stringify(allFlat(),null,2)],{type:'application/json'}),'kharj-yar-backup.json');}
 function exportCSV(){
   let csv='\uFEFF'+'سال,ماه,موضوع,مبلغ (ریال),تاریخ,بانک,توضیحات\n';
@@ -561,7 +682,7 @@ function exportCSV(){
 }
 function dl(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();toast('فایل ذخیره شد');}
 
-// ---------- پارسر مقاوم (با جداکننده‌های _ - : و بانک) ----------
+// ---------- پارسر مقاوم ----------
 function openImport(){
   document.getElementById('impFile').value='';
   document.getElementById('importText').value='';
@@ -706,24 +827,24 @@ function cancelImport(){
 function addYear(){
   const v=prompt('نام سال جدید (مثلاً ۱۴۰۶):','');
   if(!v||!v.trim())return;
-  const y=toLatinDigits(v.trim()).replace(/^1?/,'')?'۱۴'+toLatinDigits(v.trim()).replace(/^(13|14|15)?/,''):'';
-  const yearName=(function(){
-    let s=toLatinDigits(v.trim()).replace(/[^\d]/g,'');
-    if(!s)return v.trim();
-    if(s.length===2)return '14'+s;
-    return s;
-  })();
+  let s=toLatinDigits(v.trim()).replace(/[^\d]/g,'');
+  const yearName=s.length===2?'14'+s:(s||v.trim());
   currentYear=yearName;
   openMonthDialog('new');
   toast('سال «'+fa(yearName)+'» انتخاب شد — حالا اولین ماهش را بساز');
 }
 function openMonthDialog(mode){
-  document.getElementById('dlgTitle').textContent=mode==='new'?'ماه جدید در سال '+fa(currentYear):'تغییر نام ماه';
+  document.getElementById('dlgTitle').textContent=mode==='new'?'ماه جدید در سال '+fa(currentYear):'تغییر نام / سال ماه';
   document.getElementById('monthName').value='';
   document.getElementById('monthYear').value=mode==='new'?currentYear:'';
   dlg.dataset.mode=mode;
-  dlg.dataset.oldname=mode==='rename'?'':'';
-  if(mode==='rename'&&showCtxName){dlg.dataset.oldname=showCtxName;document.getElementById('monthName').value=showCtxName;}
+  dlg.dataset.oldname='';
+  if(mode==='rename'&&showCtxName){
+    dlg.dataset.oldname=showCtxName;
+    document.getElementById('monthName').value=showCtxName;
+    const mm=months.find(x=>x.name===showCtxName);
+    document.getElementById('monthYear').value=mm?mm.year:'';
+  }
   dlg.showModal();
   setTimeout(()=>document.getElementById('monthName').focus(),100);
 }
@@ -748,7 +869,6 @@ function dlgOk(){
 async function renameMonth(oldName,newName,newYear){
   if(months.find(m=>m.name===newName&&m.name!==oldName))return toast('⚠️ این نام تکراری است');
   const m=months.find(x=>x.name===oldName);if(!m)return;
-  const oldYear=m.year;
   m.name=newName;
   if(newYear)m.year=newYear;
   currentName=newName;
@@ -774,11 +894,11 @@ async function deleteMonth(name){
   }catch(e){toast('خطا: '+(e.message||e));return;}
   try{await api('/months_list?name=eq.'+encodeURIComponent(m.name),{method:'DELETE'});}catch(e){}
   months.splice(i,1);
-  if(!months.find(x=>x.year===m.year)){/* سال بدون ماه خودش حذف می‌شود */}
   if(!months.length){months=[{name:'ماه اول',year:'۱۴۰۵',seq:1,rows:[]}];
     api('/months_list',{method:'POST',prefer:'return=minimal',body:{name:'ماه اول',sort:1,year:'۱۴۰۵'}}).catch(()=>{});}
   persistSort();
-  currentName=monthsOfYear(m.year).length?monthsOfYear(m.year)[0].name:months[0].name;
+  const ym=monthsOfYear(m.year);
+  currentName=ym.length?ym[0].name:months[0].name;
   render();
   toast('ماه حذف شد 🗑️');
 }
@@ -818,6 +938,7 @@ document.addEventListener('click',e=>{if(!e.target.closest('#ctxMenu'))hideCtx()
 document.addEventListener('scroll',hideCtx,true);
 
 window.addEventListener('beforeprint',()=>{
+  if(searchTerm)return;
   const h=document.getElementById('printHeader');h.style.display='block';
   const m=cur();
   h.innerHTML='<h2>خرج‌یار — '+(m?fa(m.name+' '+m.year):'')+'</h2>';
