@@ -293,7 +293,7 @@ async function doLogin(){
   if(!u||!p){msg.textContent='نام کاربری و رمز را بنویس';return;}
   msg.textContent='⏳ در حال بررسی…';
   try{
-    await ensureAdminUser();
+    // await ensureAdminUser();
     const rows=await api('/users?username=eq.'+encodeURIComponent(u)+'&select=*');
     if(!rows||!rows.length){msg.textContent='❌ چنین کاربری وجود ندارد';return;}
     const usr=rows[0];
