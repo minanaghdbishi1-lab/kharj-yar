@@ -290,31 +290,34 @@ async function doLogin(){
   const u=document.getElementById('loginUser').value.trim().toLowerCase();
   const p=document.getElementById('loginPass').value;
   const msg=document.getElementById('loginMsg');
+  console.log('login start', u);
   if(!u||!p){msg.textContent='نام کاربری و رمز را بنویس';return;}
   msg.textContent='⏳ در حال بررسی…';
   try{
-    // await ensureAdminUser();
-    const rows=await api('/users?username=eq.'+encodeURIComponent(u)+'&select=*');
+    console.log('fetching users...');
+    const controller = new AbortController();
+    const t = setTimeout(()=>controller.abort(), 15000);
+    const res = await fetch(API+'/users?username=eq.'+encodeURIComponent(u)+'&select=*', {
+      headers:{'apikey': SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
+    , signal: controller.signal});
+    clearTimeout(t);
+    console.log('status:', res.status);
+    const rows = await res.json();
+    console.log('rows:', rows);
     if(!rows||!rows.length){msg.textContent='❌ چنین کاربری وجود ندارد';return;}
     const usr=rows[0];
-    const h=await hashPass(p);
-    if(usr.password!==h){msg.textContent='❌ رمز عبور اشتباه است';return;}
-    if(usr.is_active===false){msg.textContent='⛔ اشتراک شما به پایان رسیده است';return;}
-    if(usr.expire_date){
-      const ex=new Date(usr.expire_date);
-      if(ex.getTime()<Date.now()){msg.textContent='⛔ اشتراک شما به پایان رسیده است';return;}
-    }
+    if(String(usr.password)!==String(p)){msg.textContent='❌ رمز عبور اشتباه است';return;}
+    if(usr.is_active===false){msg.textContent='⛔ اشتراک تمام شده';return;}
     currentUser={username:u,isAdmin:u==='admin'};
     try{localStorage.setItem(SESSION_KEY,u);}catch(_){}
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
-    document.getElementById('userBadge').textContent='👤 '+fa(u);
+    document.getElementById('userBadge').textContent='👤 '+u;
     msg.textContent='';
-    document.getElementById('loginPass').value='';
     startSync();
   }catch(e){
-    msg.textContent='❌ خطای اتصال به سرور — اینترنت را چک کن';
-    console.error(e);
+    console.log('login error:', e);
+    msg.textContent='❌ خطای اتصال: '+ (e.name==='AbortError' ? 'Timeout - ۱۵ ثانیه جواب نیامد' : e.message);
   }
 }
 function logout(){
