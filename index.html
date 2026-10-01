@@ -86,6 +86,9 @@
     <p>برای ورود، نام کاربری و رمز خود را بزنید</p>
     <input id="loginUser" placeholder="نام کاربری" autocomplete="username">
     <input id="loginPass" type="password" placeholder="رمز عبور" autocomplete="current-password">
+    <label style="font-size:13px;color:#666;display:flex;align-items:center;gap:6px;justify-content:center;margin-top:8px;">
+      <input type="checkbox" id="rememberMe" checked style="width:auto;"> مرا به خاطر بسپار
+    </label>
     <button class="btn primary" onclick="doLogin()">ورود</button>
     <div id="loginMsg"></div>
   </div>
@@ -305,6 +308,10 @@ async function doLogin(){
     if(String(usr.password).trim()!==String(p).trim()){msg.textContent='❌ رمز عبور اشتباه است';console.log('pass mismatch');return;}
     console.log('pass ok, active:', usr.is_active);
     currentUser={username:u,isAdmin:u==='admin'};
+    try{
+      if(document.getElementById('rememberMe') && document.getElementById('rememberMe').checked) localStorage.setItem(SESSION_KEY,u);
+      else localStorage.removeItem(SESSION_KEY);
+    }catch(_){}
     document.getElementById('loginScreen').style.display='none';
     document.getElementById('app').classList.remove('hidden');
     console.log('hidden done');
