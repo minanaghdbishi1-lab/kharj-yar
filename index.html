@@ -342,7 +342,8 @@ function autoLogin(){
     document.getElementById('loginScreen').style.display='none';
     document.getElementById('app').classList.remove('hidden');
     document.getElementById('userBadge').textContent='👤 '+fa(u);
-    startSync();
+   startSync();
+  routeAdmin();
   }).catch(()=>{});
   return false;
 }
