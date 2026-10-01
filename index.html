@@ -1057,12 +1057,18 @@ document.addEventListener('scroll',hideCtx,true);
 // ---------- پنل ادمین ----------
 function routeAdmin(){
   const isAdminPage=location.hash==='#admin';
-  document.getElementById('page-admin').classList.toggle('hidden',!isAdminPage);
-  document.querySelector('nav.menu').style.display=isAdminPage?'none':'flex';
-  if(isAdminPage){
-    if(!currentUser||!currentUser.isAdmin){toast('⛔ فقط ادمین');location.hash='';return;}
-    loadAdmin();
+  const adminSec=document.getElementById('page-admin');
+  const menu=document.querySelector('nav.menu');
+  if(!isAdminPage){
+    adminSec.classList.add('hidden');
+    if(menu)menu.style.display='flex';
+    return;
   }
+  if(!currentUser){return;}
+  if(!currentUser.isAdmin){toast('⛔ فقط ادمین');location.hash='';return;}
+  adminSec.classList.remove('hidden');
+  if(menu)menu.style.display='none';
+  loadAdmin();
 }
 window.addEventListener('hashchange',routeAdmin);
 async function loadAdmin(){
