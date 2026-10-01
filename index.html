@@ -305,7 +305,7 @@ async function doLogin(){
     if(String(usr.password).trim()!==String(p).trim()){msg.textContent='❌ رمز عبور اشتباه است';console.log('pass mismatch');return;}
     console.log('pass ok, active:', usr.is_active);
     currentUser={username:u,isAdmin:u==='admin'};
-    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('loginScreen').style.display='none';
     document.getElementById('app').classList.remove('hidden');
     console.log('hidden done');
     msg.textContent='';
@@ -331,7 +331,7 @@ function autoLogin(){
     if(usr.is_active===false)return;
     if(usr.expire_date&&new Date(usr.expire_date).getTime()<Date.now())return;
     currentUser={username:u,isAdmin:u==='admin'};
-    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('loginScreen').style.display='none';
     document.getElementById('app').classList.remove('hidden');
     document.getElementById('userBadge').textContent='👤 '+fa(u);
     startSync();
