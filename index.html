@@ -317,6 +317,7 @@ async function doLogin(){
     console.log('hidden done');
     msg.textContent='';
     startSync();
+    routeAdmin();
   }catch(e){
     console.log('login error:', e);
     msg.textContent='❌ خطای اتصال: '+e.message;
