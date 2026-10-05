@@ -121,6 +121,7 @@ dialog input{text-align:center;}
 <h3 style="text-align:center;">📥 وارد کردن هزینه‌ها</h3>
 <p style="font-size:12px;color:var(--muted);text-align:center;">داده‌ها به <b>همین تبی که الان توشی</b> اضافه می‌شود.<br>فرمت: «موضوع: مبلغ - تاریخ - بانک» (بانک اختیاری)</p>
 <input type="file" id="impFile" accept=".xlsx,.xls,.csv,.txt,.tsv,.docx" style="font-size:13px;">
+<input id="impMonth" list="monthNameList" placeholder="ماه مقصد"><datalist id="monthNameList"></datalist>
 <textarea id="importText" placeholder="یا اینجا پیست کن، مثلاً:&#10;۱-انتقال بیمه: 55.662.341 - 1405.4.1&#10;۱۶-انتقال مبل رضا: 150.000.000 - 1405.5.8 - بلو&#10;خرید لوازم_125.000.700 - 1405.7.2"></textarea>
 <div style="background:#e7f7f4;border:1px solid #b8e6de;border-radius:10px;padding:10px;margin:8px 0;font-size:13px;text-align:center;">
 ماه مقصد: <b id="impTargetLabel"></b>
