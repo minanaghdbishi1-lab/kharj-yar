@@ -20,7 +20,7 @@ header h1{font-size:18px;}
 .ytab{padding:7px 16px;border-radius:12px 12px 0 0;background:#eee;border:none;font-size:14px;font-weight:600;white-space:nowrap;-webkit-user-select:none;user-select:none;}
 .ytab.active{background:var(--gold);color:#fff;}
 .monthRow{display:flex;gap:6px;overflow-x:auto;padding:8px 12px;background:var(--card);border-bottom:1px solid #e5e5e5;}
-.mtab{padding:7px 12px;border-radius:16px;background:#f0f0f0;border:none;font-size:13px;white-space:nowrap;-webkit-user-select:none;user-select:none;touch-action:none;cursor:grab;}
+.mtab{padding:7px 12px;border-radius:16px;background:#f0f0f0;border:none;font-size:13px;white-space:nowrap;-webkit-user-select:none;user-select:none;}
 .mtab.active{background:var(--accent);color:#fff;}
 .mtab.dragging{background:var(--gold);color:#fff;transform:scale(1.08);box-shadow:0 3px 10px rgba(0,0,0,.3);opacity:.9;}
 main{padding:12px;}
@@ -80,7 +80,6 @@ dialog label{display:block;font-size:12px;color:var(--muted);margin-top:6px;text
  td input[type=text]{font-size:14px;}
  table{font-size:14px;}
  .subjcell{color:var(--accent-dark);text-decoration:underline dotted;}
- .numcell{display:table-cell;}
 }
 </style>
 </head>
@@ -122,20 +121,18 @@ dialog label{display:block;font-size:12px;color:var(--muted);margin-top:6px;text
 </div>
 </section>
 <section id="page-summary" class="hidden"><div class="card"><h3 style="margin-bottom:10px;">خلاصه همه ماه‌ها</h3><table><thead><tr><th>ماه</th><th style="width:120px">جمع (ریال)</th><th style="width:60px">تعداد</th></tr></thead><tbody id="summaryRows"></tbody></table><div class="total" style="margin-top:12px;border-top:2px solid #eee;padding-top:10px;"><span>جمع کل:</span><span id="grandTotal"></span></div></div></section>
-<section id="page-settings" class="hidden"><div class="card"><p id="dbInfo" style="font-size:13px;color:var(--muted);"></p></div><div class="card"><h3 style="margin-bottom:6px;">پشتیبان‌گیری</h3><button class="btn blue" onclick="exportData()">💾 خروجی کل داده‌ها</button><button class="btn" onclick="exportCSV()">📄 خروجی اکسل (CSV) — همه</button></div><div class="card"><button class="btn" onclick="logout()">🚪 خروج از حساب</button></div><div class="card" style="font-size:12px;color:var(--muted);text-align:center;">خرج‌یار — نسخه ۸.۰ — آفلاین + سینک خودکار<br>💡 آفلاین: خرج ثبت کن، اینترنت که برگشت خودش سینک می‌شود<br>💡 تپ روی موضوع (موبایل) = پنجره ویرایش کامل</div></section>
+<section id="page-settings" class="hidden"><div class="card"><p id="dbInfo" style="font-size:13px;color:var(--muted);"></p></div><div class="card"><h3 style="margin-bottom:6px;">پشتیبان‌گیری</h3><button class="btn blue" onclick="exportData()">💾 خروجی کل داده‌ها</button><button class="btn" onclick="exportCSV()">📄 خروجی اکسل (CSV) — همه</button></div><div class="card"><button class="btn" onclick="logout()">🚪 خروج از حساب</button></div><div class="card" style="font-size:12px;color:var(--muted);text-align:center;">خرج‌یار — نسخه ۸.۳<br>💡 تاریخ فقط عددی: ۱۴۰۵۰۶۰۱ یا ۱۴۰۵۶۱ یا ۱۴۰۵.۶۲ — همه خودکار تبدیل می‌شوند</div></section>
 </main>
 <section id="page-admin" class="hidden" style="padding:12px;"><div class="card"><h3 style="margin-bottom:8px;">🛡️ پنل ادمین — مدیریت کاربران</h3><div style="display:flex;gap:8px;flex-wrap:wrap;"><input id="admUser" placeholder="یوزر" style="flex:1;min-width:100px;padding:8px;border:1px solid #ddd;border-radius:8px;"><input id="admPass" placeholder="رمز" style="flex:1;min-width:100px;padding:8px;border:1px solid #ddd;border-radius:8px;"><button class="btn primary" style="width:auto;padding:8px 16px;margin:0;" onclick="admCreate()">＋ ساخت</button></div></div><div class="card"><table class="admTable"><thead><tr><th>یوزر</th><th>وضعیت</th><th style="width:60px">عملیات</th></tr></thead><tbody id="admRows"></tbody></table></div><div class="card"><button class="btn" onclick="location.hash=''">← بازگشت به برنامه</button></div></section>
 <nav class="menu"><button class="on" id="m-expense" onclick="goPage('expense')">🧾 هزینه‌ها</button><button id="m-summary" onclick="goPage('summary')">📊 خلاصه</button><button id="m-settings" onclick="goPage('settings')">⚙️ تنظیمات</button></nav>
 <dialog id="dlg"><h3 id="dlgTitle">ماه جدید</h3><input id="monthName" placeholder="نام ماه"><input id="monthYear" placeholder="سال"><div style="display:flex;gap:8px;"><button class="btn primary" onclick="dlgOk()">تأیید</button><button class="btn" onclick="document.getElementById('dlg').close()">انصراف</button></div></dialog>
 <dialog id="yearDlg"><h3 id="yearDlgTitle">سال</h3><input id="yearInput" placeholder="مثلاً ۱۴۰۶"><div style="display:flex;gap:8px;"><button class="btn primary" onclick="yearDlgOk()">تأیید</button><button class="btn" onclick="document.getElementById('yearDlg').close()">انصراف</button></div></dialog>
-<dialog id="editDlg"><h3 style="text-align:center;">ویرایش ردیف</h3><label>موضوع</label><input id="edSubj"><label>مبلغ (ریال)</label><input id="edAmt" inputmode="numeric"><label>تاریخ (مثلاً ۱۴۰۵/۰۴/۰۲)</label><input id="edDate" inputmode="numeric"><label>بانک</label><input id="edBank"><label>توضیحات</label><input id="edNotes"><div style="display:flex;gap:8px;margin-top:10px;"><button class="btn primary" onclick="editDlgSave()">ذخیره</button><button class="btn" onclick="document.getElementById('editDlg').close()">انصراف</button></div></dialog>
+<dialog id="editDlg"><h3 style="text-align:center;">ویرایش ردیف</h3><label>موضوع</label><input id="edSubj"><label>مبلغ (ریال)</label><input id="edAmt" inputmode="numeric"><label>تاریخ — فقط عدد بزن: ۱۴۰۵۰۶۰۱ یا ۱۴۰۵۶۱</label><input id="edDate" inputmode="numeric"><label>بانک</label><input id="edBank"><label>توضیحات</label><input id="edNotes"><div style="display:flex;gap:8px;margin-top:10px;"><button class="btn primary" onclick="editDlgSave()">ذخیره</button><button class="btn" onclick="document.getElementById('editDlg').close()">انصراف</button></div></dialog>
 <dialog id="impDlg">
 <h3 style="text-align:center;">📥 وارد کردن هزینه‌ها</h3>
-<p style="font-size:12px;color:var(--muted);text-align:center;">داده‌ها به <b>همین تبی که الان توشی</b> اضافه می‌شود.<br>فرمت: «موضوع: مبلغ - تاریخ - بانک» (بانک اختیاری)</p>
+<p style="font-size:12px;color:var(--muted);text-align:center;">داده‌ها به <b>همین تبی که الان توشی</b> اضافه می‌شود.<br>فرمت: «موضوع: مبلغ _ تاریخ» (فشرده هم قبول: 1405.62 = ماه ۶ روز ۱)</p>
 <input type="file" id="impFile" accept=".xlsx,.xls,.csv,.txt,.tsv,.docx" style="font-size:13px;">
-<textarea id="importText" placeholder="یا اینجا پیست کن، مثلاً:&#10;۱-انتقال بیمه: 55.662.341 - 1405.4.1&#10;۱۶-انتقال مبل رضا: 150.000.000 - 1405.5.8 - بلو&#10;خرید لوازم_125.000.700 - 1405.7.2"></textarea>
-<input id="impMonth" list="monthNameList" placeholder="ماه مقصد" class="hidden">
-<datalist id="monthNameList"></datalist>
+<textarea id="importText" placeholder="یا اینجا پیست کن:&#10;ناهار دفتر: 13.100.000 _ 1405.6.1&#10;پرداخت بیمه: 55.662.341 _ 1405.62&#10;۱۰- سیگار مینا: 3.400.000 _1405.6.2"></textarea>
 <div style="background:#e7f7f4;border:1px solid #b8e6de;border-radius:10px;padding:10px;margin:8px 0;font-size:13px;text-align:center;">
 ماه مقصد: <b id="impTargetLabel"></b>
 </div>
@@ -182,6 +179,8 @@ var editDlgCid=null;
 var idb=null;
 var localRows=[];
 var queueBusy=false;
+var queueCount=0;
+var itemKeys={};
 function uuid(){var s='';for(var i=0;i<36;i++){if(i===8||i===13||i===18||i===23)s+='-';else s+=Math.floor(Math.random()*16).toString(16);}return s;}
 function fa(n){return String(n).replace(/\d/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'[d];});}
 function money(n){var s=String(Math.round(Number(n)||0)).replace(/\B(?=(\d{3})+(?!\d))/g,'.');return fa(s)+' ریال';}
@@ -192,15 +191,16 @@ function setDot(s,n){var d=document.getElementById('syncDot');if(!d)return;if(s=
 function idbOpen(){return new Promise(function(res){if(idb)return res(idb);if(!window.indexedDB){res(null);return;}var rq=indexedDB.open('kharjyar_offline',1);rq.onupgradeneeded=function(e){var db=e.target.result;if(!db.objectStoreNames.contains('rows'))db.createObjectStore('rows',{keyPath:'cid'});if(!db.objectStoreNames.contains('queue'))db.createObjectStore('queue',{autoIncrement:true});};rq.onsuccess=function(){idb=rq.result;res(idb);};rq.onerror=function(){res(null);};});}
 function idbPut(store,val){return idbOpen().then(function(db){if(!db)return;return new Promise(function(res){var tx=db.transaction(store,'readwrite');tx.objectStore(store).put(val);tx.oncomplete=function(){res();};tx.onerror=function(){res();};});});}
 function idbAll(store){return idbOpen().then(function(db){if(!db)return [];return new Promise(function(res){var tx=db.transaction(store,'readonly');var rq=tx.objectStore(store).getAll();rq.onsuccess=function(){res(rq.result||[]);};rq.onerror=function(){res([]);};});});}
-function idbClear(store){return idbOpen().then(function(db){if(!db)return;return new Promise(function(res){var tx=db.transaction(store,'readwrite');tx.objectStore(store).clear();tx.oncomplete=function(){res();};tx.onerror=function(){res();};});});}
-function loadLocal(){return idbAll('rows').then(function(a){localRows=(a||[]).filter(function(r){return r.user_id===currentUser.username;});});}
+function idbDelKey(store,key){return idbOpen().then(function(db){if(!db)return;return new Promise(function(res){var tx=db.transaction(store,'readwrite');try{tx.objectStore(store).delete(key);}catch(e){}tx.oncomplete=function(){res();};tx.onerror=function(){res();};});});}
+function loadLocal(){return idbAll('rows').then(function(a){localRows=(a||[]).filter(function(r){return r.user_id===currentUser.username&&!r.is_deleted;});});}
 function saveLocalRow(r){r.user_id=currentUser.username;return idbPut('rows',r);}
-function queueAdd(op){return idbOpen().then(function(db){if(!db)return;return new Promise(function(res){var tx=db.transaction('queue','readwrite');tx.objectStore('queue').add(op);tx.oncomplete=function(){res();};tx.onerror=function(){res();};});});}
+function queueAdd(op){return idbOpen().then(function(db){if(!db)return null;return new Promise(function(res){var tx=db.transaction('queue','readwrite');var rq=tx.objectStore('queue').add(op);rq.onsuccess=function(){res(rq.result);};rq.onerror=function(){res(null);};});});}
+function countQueue(){idbAll('queue').then(function(a){queueCount=(a||[]).length;if(!navigator.onLine&&currentUser)setDot('off',queueCount);});}
 // ---------- REST ----------
 function api(path,opts){opts=opts||{};return fetch(API+path,{method:opts.method||'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Accept':'application/json'},body:opts.body?JSON.stringify(opts.body):undefined}).then(function(res){if(!res.ok)return res.text().then(function(t){throw new Error(t.slice(0,250));});if(res.status===204||res.status===201)return null;return res.text().then(function(t){if(!t)return null;try{return JSON.parse(t);}catch(e){return null;}});});}
 function ensureAdminUser(){return api('/users?username=eq.admin&select=*').then(function(u){if(!u||!u.length){return api('/users',{method:'POST',body:{username:'admin',password:'1234',is_active:true}}).catch(function(){});}}).catch(function(){});}
 function doLogin(){var u=document.getElementById('loginUser').value.trim().toLowerCase();var p=document.getElementById('loginPass').value;var msg=document.getElementById('loginMsg');if(!u||!p){msg.textContent='نام کاربری و رمز را بنویس';return;}msg.textContent='⏳ در حال بررسی…';api('/users?username=eq.'+encodeURIComponent(u)+'&select=*').then(function(rows){if(!rows||!rows.length){msg.textContent='❌ چنین کاربری وجود ندارد';return;}var usr=rows[0];if(String(usr.password).trim()!==String(p).trim()){msg.textContent='❌ رمز عبور اشتباه است';return;}if(usr.is_active===false){msg.textContent='⛔ اشتراک تمام شده';return;}currentUser={username:u,isAdmin:(u==='admin')};try{if(document.getElementById('rememberMe').checked){localStorage.setItem(SESSION_KEY,u);}else{localStorage.removeItem(SESSION_KEY);}}catch(e){}enterApp(u);}).catch(function(e){msg.textContent='❌ خطای اتصال: '+e.message;});}
-function enterApp(u){document.getElementById('loginScreen').style.display='none';document.getElementById('app').classList.remove('hidden');document.getElementById('userBadge').textContent='👤 '+fa(u);document.getElementById('loginPass').value='';document.getElementById('loginMsg').textContent='';loadYearOrder();loadLocal().then(function(){startSync();routeAdmin();});}
+function enterApp(u){document.getElementById('loginScreen').style.display='none';document.getElementById('app').classList.remove('hidden');document.getElementById('userBadge').textContent='👤 '+fa(u);document.getElementById('loginPass').value='';document.getElementById('loginMsg').textContent='';loadYearOrder();loadLocal().then(function(){countQueue();startSync();routeAdmin();});}
 function logout(){if(!confirm('خارج می‌شوی؟'))return;try{localStorage.removeItem(SESSION_KEY);}catch(e){}location.reload();}
 function autoLogin(){var u=null;try{u=localStorage.getItem(SESSION_KEY);}catch(e){}if(!u)return false;api('/users?username=eq.'+encodeURIComponent(u)+'&select=*').then(function(rows){if(!rows||!rows.length){try{localStorage.removeItem(SESSION_KEY);}catch(e){}return;}if(rows[0].is_active===false)return;if(rows[0].expire_date&&new Date(rows[0].expire_date).getTime()<Date.now())return;currentUser={username:u,isAdmin:(u==='admin')};enterApp(u);}).catch(function(){});return false;}
 function toLatinDigits(s){return String(s).replace(/[۰-۹]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'[d];}).replace(/[٠-٩]/g,function(d){return '٠١٢٣٤٥٦٧٨٩'[d];});}
@@ -210,70 +210,86 @@ function mkey(y,n){return String(y)+'||'+String(n);}
 function div(a,b){return ~~(a/b);}
 function g2j(gy,gm,gd){var gdm=[0,31,59,90,120,151,181,212,243,273,304,334];var jy=(gy<=1600)?0:979;gy-=(gy<=1600)?621:1600;var gy2=(gm>2)?(gy+1):gy;var days=(365*gy)+div(gy2+3,4)-div(gy2+99,100)+div(gy2+399,400)-80+gd+gdm[gm-1];jy+=33*div(days,12053);days%=12053;jy+=4*div(days,1461);days%=1461;if(days>365){jy+=div(days-1,365);days=(days-1)%365;}var jm=(days<186)?1+div(days,31):7+div(days-186,30);var jd=1+((days<186)?(days%31):((days-186)%30));return jy+'/'+String(jm).padStart(2,'0')+'/'+String(jd).padStart(2,'0');}
 function serialToJalali(n){n=Math.round(Number(n));if(n<20000||n>80000)return null;var d=new Date(Date.UTC(1899,11,30)+n*86400000);return g2j(d.getUTCFullYear(),d.getUTCMonth()+1,d.getUTCDate());}
-function parseDate(raw){if(raw===null||raw===undefined||raw==='')return null;if(typeof raw==='number')return serialToJalali(raw);var s=toLatinDigits(String(raw)).trim();var parts=s.split(/[^0-9]+/).filter(Boolean);var y,m,d;if(parts.length>=3){y=parts[0];m=parts[1];d=parts[2];}else if(parts.length===1){var t=parts[0];if(t.length>=5&&t.length<=6&&Number(t)>20000)return serialToJalali(t);if(t.length===8){y=t.slice(0,4);m=t.slice(4,6);d=t.slice(6,8);}else if(t.length===6){y='14'+t.slice(0,2);m=t.slice(2,4);d=t.slice(4,6);}else return null;}else return null;y=Number(y);m=Number(m);d=Number(d);if(y<200)y+=1400;if(y<1200||y>1500)return null;if(m<1||m>12)return null;if(d<1||d>31)return null;return y+'/'+String(m).padStart(2,'0')+'/'+String(d).padStart(2,'0');}
+function parseDate(raw){if(raw===null||raw===undefined||raw==='')return null;if(typeof raw==='number')return serialToJalali(raw);var s=toLatinDigits(String(raw)).trim();var parts=s.split(/[^0-9]+/).filter(Boolean);var y,m,d;
+if(parts.length>=3){y=parts[0];m=parts[1];d=parts[2];}
+else if(parts.length===1){var t=parts[0];
+if(t.length>=5&&t.length<=6&&Number(t)>20000)return serialToJalali(t);
+if(t.length===8){y=t.slice(0,4);m=t.slice(4,6);d=t.slice(6,8);}
+else if(t.length===7){y=t.slice(0,4);m=t.slice(4,6);d='0'+t.slice(6,7);}
+else if(t.length===6){y=t.slice(0,4);m='0'+t.slice(4,5);d='0'+t.slice(5,6);}
+else return null;}
+else return null;
+y=Number(y);m=Number(m);d=Number(d);
+if(y<200)y+=1400;
+if(y<1200||y>1500)return null;
+if(m<1||m>12)return null;
+if(d<1||d>31)return null;
+return y+'/'+String(m).padStart(2,'0')+'/'+String(d).padStart(2,'0');}
 function dateKey(s){var p=parseDate(s);return p?p.replace(/\//g,''):'99999999';}
+// ---------- rebuild ----------
 function rebuild(rows,ml){
-var merged={};
-localRows.forEach(function(r){if(r.is_deleted)return;merged[r.cid]=r;});
-(rows||[]).forEach(function(r){var cid=r.client_id;if(!cid)return;
- if(!merged[cid]){merged[cid]={cid:cid,id:r.id,subject:r.subject,amount:Number(r.amount),date:r.date,bank:r.bank||'',notes:r.notes||'',updated_at:r.updated_at};}
- else{var lt=merged[cid].updated_at||'',rt=r.updated_at||'';if(rt>lt){merged[cid]={cid:cid,id:r.id,subject:r.subject,amount:Number(r.amount),date:r.date,bank:r.bank||'',notes:r.notes||'',updated_at:r.updated_at};}}
-});
-localRows=[];
-Object.keys(merged).forEach(function(k){localRows.push(merged[k]);});
-var map={};localRows.forEach(function(r){var y=r.year||currentYear;if(!y)y='1405';var k=mkey(y,r.month);if(!map[k])map[k]=[];map[k].push(r);});
-var orderMap={};(ml||[]).forEach(function(o){var y=o.year||'1405';orderMap[mkey(y,o.name)]=o;});
-var keys=[];(ml||[]).forEach(function(o){var k=mkey(o.year||'1405',o.name);if(keys.indexOf(k)<0)keys.push(k);});
-for(var k2 in map){if(keys.indexOf(k2)<0)keys.push(k2);}
-months=keys.map(function(k){var sp=k.split('||');var y=sp[0];var name=sp.slice(1).join('||');var o=orderMap[k]||{};return{name:name,year:y,seq:(o.sort!=null?Number(o.sort):9999),rows:map[k]||[]};});
+var serverMap={};
+(rows||[]).forEach(function(r){var cid=r.client_id||('srv_'+r.id);var rec={cid:cid,id:r.id,subject:r.subject,amount:Number(r.amount),date:r.date,bank:r.bank||'',notes:r.notes||'',month:r.month,year:r.year||'1405',updated_at:r.updated_at||''};var ex=serverMap[cid];if(!ex)serverMap[cid]=rec;else if(rec.updated_at>(ex.updated_at||''))serverMap[cid]=rec;});
+localRows.forEach(function(lr){var srv=serverMap[lr.cid];if(srv){if((lr.updated_at||'')>(srv.updated_at||'')){srv.subject=lr.subject;srv.amount=lr.amount;srv.date=lr.date;srv.bank=lr.bank;srv.notes=lr.notes;srv.updated_at=lr.updated_at;}}});
+var validMonths={};(ml||[]).forEach(function(o){validMonths[mkey(o.year||'1405',o.name)]=true;});
+var map={};Object.keys(serverMap).forEach(function(k){var rec=serverMap[k];var y=rec.year||'1405';var mn=rec.month;if(!mn||mn==='undefined'||!validMonths[mkey(y,mn)])return;var kk=mkey(y,mn);if(!map[kk])map[kk]=[];map[kk].push(rec);});
+var orderMap={};(ml||[]).forEach(function(o){orderMap[mkey(o.year||'1405',o.name)]=o;});
+months=(ml||[]).map(function(o){var y=o.year||'1405';var o2=orderMap[mkey(y,o.name)]||o;return{name:o.name,year:y,seq:(o2.sort!=null?Number(o2.sort):9999),rows:map[mkey(y,o.name)]||[]};});
 months.sort(function(a,b){if(String(a.year)!==String(b.year))return String(a.year)<String(b.year)?-1:1;return a.seq-b.seq;});
 months.forEach(function(m,i){m.seq=i+1;m.rows.sort(function(a,b){var ka=dateKey(a.date),kb=dateKey(b.date);if(ka!==kb)return ka<kb?-1:1;return 0;});});
 var years=getYears();if(years.indexOf(String(currentYear))<0&&years.length)currentYear=years[0];var ym=monthsOfYear(currentYear);var found=null;for(var i=0;i<months.length;i++){if(months[i].name===currentName&&String(months[i].year)===String(currentYear)){found=months[i];break;}}if(!found)currentName=ym.length?ym[0].name:'';
 }
 function getYears(){var s=[];months.forEach(function(m){var y=String(m.year||'1405');if(s.indexOf(y)<0)s.push(y);});yearOrder.forEach(function(y){y=String(y);if(s.indexOf(y)<0)s.push(y);});s.sort();if(!s.length)s=['1405'];return s;}
 function monthsOfYear(y){return months.filter(function(m){return String(m.year)===String(y);});}
-function byId(id){for(var i=0;i<months.length;i++){for(var j=0;j<months[i].rows.length;j++){if(String(months[i].rows[j].cid)===String(id))return{row:months[i].rows[j],month:months[i]};}}return null;}
+function byId(cid){for(var i=0;i<months.length;i++){for(var j=0;j<months[i].rows.length;j++){if(String(months[i].rows[j].cid)===String(cid))return{row:months[i].rows[j],month:months[i]};}}return null;}
 function userBusy(){var a=document.activeElement;return a&&a.tagName==='INPUT'&&!a.closest('dialog');}
-// ---------- سینک و ادغام ----------
+// ---------- سینک ----------
 function refresh(){if(!currentUser)return;if(userBusy()){clearTimeout(refreshTimer);refreshTimer=setTimeout(refresh,2000);return;}
-if(!navigator.onLine){setDot('off',queueCount);render();return;}
+if(!navigator.onLine){setDot('off',queueCount);return;}
 setDot('sync');
-api('/expenses?select=*&user_id=eq.'+encodeURIComponent(currentUser.username)+'&is_deleted=eq.false&order=created_at.asc').then(function(data){return api('/months_list?select=*&user_id=eq.'+encodeURIComponent(currentUser.username)+'&order=sort.asc').then(function(ml){return{data:data,ml:ml};}).catch(function(){return{data:data,ml:[]};});}).then(function(o){rebuild(o.data,o.ml);render();online=true;setDot('ok');var di=document.getElementById('dbInfo');if(di)di.textContent='✅ متصل — حساب: '+currentUser.username;}).catch(function(e){online=false;setDot('off',queueCount);render();toast('⚠️ خطای واقعی شبکه: '+(e.message||e));});}
-function flushQueue(){if(queueBusy||!navigator.onLine||!currentUser)return;queueBusy=true;idbAll('queue').then(function(items){var chain=Promise.resolve();(items||[]).forEach(function(item){chain=chain.then(function(){
-if(item.op==='insert'){return api('/expenses',{method:'POST',body:{month:item.row.month,year:item.row.year,subject:item.row.subject,amount:item.row.amount||0,date:item.row.date,bank:item.row.bank||'',notes:item.row.notes||'',user_id:currentUser.username,is_deleted:false,client_id:item.row.cid,updated_at:item.row.updated_at}}).then(function(out){if(out&&out[0]&&out[0].id){for(var i=0;i<localRows.length;i++){if(localRows[i].cid===item.row.cid)localRows[i].id=out[0].id;}}}).catch(function(){});}
-else if(item.op==='update'){return api('/expenses?client_id=eq.'+encodeURIComponent(item.row.cid),{method:'PATCH',body:{subject:item.row.subject,amount:item.row.amount||0,date:item.row.date,bank:item.row.bank||'',notes:item.row.notes||'',updated_at:item.row.updated_at}}).catch(function(){});}
-else if(item.op==='delete'){return api('/expenses?client_id=eq.'+encodeURIComponent(item.cid),{method:'PATCH',body:{is_deleted:true,updated_at:item.at}}).catch(function(){});}
+api('/expenses?select=*&user_id=eq.'+encodeURIComponent(currentUser.username)+'&order=created_at.asc').then(function(data){return api('/months_list?select=*&user_id=eq.'+encodeURIComponent(currentUser.username)+'&order=sort.asc').then(function(ml){return{data:data,ml:ml};}).catch(function(){return{data:data,ml:[]};});}).then(function(o){return loadLocal().then(function(){rebuild(o.data,o.ml);});}).then(function(){render();online=true;setDot('ok');var di=document.getElementById('dbInfo');if(di)di.textContent='✅ متصل — حساب: '+currentUser.username;}).catch(function(e){online=false;setDot('off',queueCount);toast('⚠️ خطای شبکه: '+(e.message||e));});}
+function flushQueue(){if(queueBusy||!navigator.onLine||!currentUser)return;queueBusy=true;setDot('sync');
+idbAll('queue').then(function(items){items=items||[];
+var chain=Promise.resolve();var done=[];
+items.forEach(function(item){chain=chain.then(function(){
+var p;
+if(item.op==='insert'){p=api('/expenses',{method:'POST',body:{month:item.row.month,year:item.row.year,subject:item.row.subject,amount:item.row.amount||0,date:item.row.date,bank:item.row.bank||'',notes:item.row.notes||'',user_id:currentUser.username,is_deleted:false,client_id:item.row.cid,updated_at:item.row.updated_at}}).then(function(out){if(out&&out[0]&&out[0].id){for(var i=0;i<localRows.length;i++){if(localRows[i].cid===item.row.cid){localRows[i].id=out[0].id;saveLocalRow(localRows[i]);}}}});}
+else if(item.op==='update'){p=api('/expenses?client_id=eq.'+encodeURIComponent(item.row.cid),{method:'PATCH',body:{subject:item.row.subject,amount:item.row.amount||0,date:item.row.date,bank:item.row.bank||'',notes:item.row.notes||'',updated_at:item.row.updated_at}});}
+else if(item.op==='delete'){p=api('/expenses?client_id=eq.'+encodeURIComponent(item.cid),{method:'PATCH',body:{is_deleted:true,updated_at:item.at}});}
+else p=Promise.resolve();
+return p.then(function(){done.push(item);}).catch(function(e){console.warn('صف: آیتم در صف ماند',e);});
 });});
-return chain;}).then(function(){return idbClear('queue');}).then(function(){queueCount=0;queueBusy=false;refresh();}).catch(function(){queueBusy=false;});}
-function startSync(){refresh();if(syncTimer)clearInterval(syncTimer);syncTimer=setInterval(function(){if(document.visibilityState!=='hidden'&&currentUser)flushQueue();},10000);window.addEventListener('online',function(){if(currentUser)flushQueue();});window.addEventListener('offline',function(){online=false;if(currentUser){setDot('off',queueCount);}});}
-var queueCount=0;
-function countQueue(){idbAll('queue').then(function(a){queueCount=(a||[]).length;if(!navigator.onLine&&currentUser)setDot('off',queueCount);});}
+return chain.then(function(){var delChain=Promise.resolve();done.forEach(function(item){delChain=delChain.then(function(){return idbDelKey('queue',item.__key);});});return delChain;});}).then(function(){queueBusy=false;countQueue();refresh();}).catch(function(){queueBusy=false;countQueue();});}
+function startSync(){refresh();if(syncTimer)clearInterval(syncTimer);syncTimer=setInterval(function(){if(document.visibilityState!=='hidden'&&currentUser){countQueue();if(navigator.onLine)flushQueue();else setDot('off',queueCount);}},10000);window.addEventListener('online',function(){if(currentUser)flushQueue();});window.addEventListener('offline',function(){online=false;if(currentUser)setDot('off',queueCount);});}
 function loadYearOrder(){try{var s=localStorage.getItem('khy_years_'+currentUser.username);if(s)yearOrder=JSON.parse(s);}catch(e){yearOrder=[];}}
 function saveYearOrder(){try{localStorage.setItem('khy_years_'+currentUser.username,JSON.stringify(yearOrder));}catch(e){}}
-// ---------- CRUD با پشتیبانی آفلاین ----------
-function dbInsertBatch(monthName,yearName,rows){var now=new Date().toISOString();var body=rows.map(function(r){var rr={month:monthName,year:String(yearName),subject:r.subject,amount:r.amount||0,date:r.date,bank:r.bank||'',notes:r.notes||'',user_id:currentUser.username,is_deleted:false,client_id:uuid(),updated_at:now};return rr;});return api('/expenses',{method:'POST',body:body}).then(function(out){var chain=Promise.resolve();body.forEach(function(rr,i){chain=chain.then(function(){rr.cid=rr.client_id;if(out&&out[i]&&out[i].id)rr.id=out[i].id;return saveLocalRow(rr);});});return chain;});}
+// ---------- CRUD ----------
+function dbInsertBatch(monthName,yearName,rows){var now=new Date().toISOString();var body=rows.map(function(r){return{month:monthName,year:String(yearName),subject:r.subject,amount:r.amount||0,date:r.date,bank:r.bank||'',notes:r.notes||'',user_id:currentUser.username,is_deleted:false,client_id:uuid(),updated_at:now};});return api('/expenses',{method:'POST',body:body}).then(function(out){var chain=Promise.resolve();body.forEach(function(rr,i){chain=chain.then(function(){rr.cid=rr.client_id;if(out&&out[i]&&out[i].id)rr.id=out[i].id;return saveLocalRow(rr);});});return chain;});}
 function dbInsert(row){var m=cur();if(!m||!m.name)return Promise.resolve();row.cid=row.cid||uuid();row.month=m.name;row.year=String(m.year);row.updated_at=new Date().toISOString();row.is_deleted=false;
 return saveLocalRow(row).then(function(){
-if(navigator.onLine){return api('/expenses',{method:'POST',body:{month:row.month,year:row.year,subject:row.subject,amount:row.amount||0,date:row.date,bank:row.bank||'',notes:row.notes||'',user_id:currentUser.username,is_deleted:false,client_id:row.cid,updated_at:row.updated_at}}).then(function(out){if(out&&out[0]&&out[0].id)row.id=out[0].id;saveLocalRow(row);}).catch(function(e){queueCount++;return queueAdd({op:'insert',row:row});});}
-else{queueCount++;return queueAdd({op:'insert',row:row});}
+if(navigator.onLine){return api('/expenses',{method:'POST',body:{month:row.month,year:row.year,subject:row.subject,amount:row.amount||0,date:row.date,bank:row.bank||'',notes:row.notes||'',user_id:currentUser.username,is_deleted:false,client_id:row.cid,updated_at:row.updated_at}}).then(function(out){if(out&&out[0]&&out[0].id)row.id=out[0].id;saveLocalRow(row);}).catch(function(){return queueAdd({op:'insert',row:row}).then(function(k){if(k)itemKeys[row.cid]=k;countQueue();});});}
+else{return queueAdd({op:'insert',row:row}).then(function(k){if(k)itemKeys[row.cid]=k;countQueue();});}
 });}
 function dbUpdate(row){if(!row)return;row.updated_at=new Date().toISOString();saveLocalRow(row);
-if(navigator.onLine&&row.id){return api('/expenses?id=eq.'+row.id,{method:'PATCH',body:{subject:row.subject,amount:row.amount||0,date:row.date,bank:row.bank||'',notes:row.notes||'',updated_at:row.updated_at}}).catch(function(){queueCount++;return queueAdd({op:'update',row:row});});}
-else if(navigator.onLine&&!row.id&&row.cid){return api('/expenses?client_id=eq.'+encodeURIComponent(row.cid),{method:'PATCH',body:{subject:row.subject,amount:row.amount||0,date:row.date,bank:row.bank||'',notes:row.notes||'',updated_at:row.updated_at}}).catch(function(){queueCount++;return queueAdd({op:'update',row:row});});}
-else{queueCount++;return queueAdd({op:'update',row:row});}}
-function dbDelete(cid){if(!cid)return Promise.resolve();for(var i=0;i<localRows.length;i++){if(localRows[i].cid===String(cid))localRows[i].is_deleted=true;}var lr=null;for(var j=0;j<localRows.length;j++){if(localRows[j].cid===String(cid))lr=localRows[j];}
-var at=new Date().toISOString();if(lr){lr.updated_at=at;saveLocalRow(lr);}
-if(navigator.onLine){return api('/expenses?client_id=eq.'+encodeURIComponent(cid),{method:'PATCH',body:{is_deleted:true,updated_at:at}}).catch(function(){queueCount++;return queueAdd({op:'delete',cid:cid,at:at});});}
-else{queueCount++;return queueAdd({op:'delete',cid:cid,at:at});}}
+var send=function(){if(row.id)return api('/expenses?id=eq.'+row.id,{method:'PATCH',body:{subject:row.subject,amount:row.amount||0,date:row.date,bank:row.bank||'',notes:row.notes||'',updated_at:row.updated_at}});return api('/expenses?client_id=eq.'+encodeURIComponent(row.cid),{method:'PATCH',body:{subject:row.subject,amount:row.amount||0,date:row.date,bank:row.bank||'',notes:row.notes||'',updated_at:row.updated_at}});};
+if(navigator.onLine){return send().catch(function(){return queueAdd({op:'update',row:row}).then(function(k){if(k)itemKeys[row.cid]=k;countQueue();});});}
+else{return queueAdd({op:'update',row:row}).then(function(k){if(k)itemKeys[row.cid]=k;countQueue();});}}
+function dbDelete(cid){if(!cid)return Promise.resolve();var lr=null;for(var j=0;j<localRows.length;j++){if(localRows[j].cid===String(cid))lr=localRows[j];}
+var at=new Date().toISOString();if(lr){lr.is_deleted=true;lr.updated_at=at;saveLocalRow(lr);}
+if(navigator.onLine){return api('/expenses?client_id=eq.'+encodeURIComponent(cid),{method:'PATCH',body:{is_deleted:true,updated_at:at}}).catch(function(){return queueAdd({op:'delete',cid:cid,at:at}).then(function(){countQueue();});});}
+else{return queueAdd({op:'delete',cid:cid,at:at}).then(function(){countQueue();});}}
 function onSearch(v){searchTerm=v.trim();renderRows();}
 function clearSearch(){searchTerm='';document.getElementById('searchBox').value='';renderRows();}
 function searchResults(){var t=searchTerm;if(!t)return [];var tl=toLatinDigits(t).toLowerCase();var tf=t.toLowerCase();var all=document.getElementById('searchAll')&&document.getElementById('searchAll').checked;var pool=all?months:(cur()?[cur()]:[]);var out=[];pool.forEach(function(m){m.rows.forEach(function(r){var hay=((r.subject||'')+' '+(r.bank||'')+' '+(r.notes||'')+' '+(r.date||'')+' '+(m.name||'')).toLowerCase();if(hay.indexOf(tf)>=0||toLatinDigits(hay).indexOf(tl)>=0)out.push({month:m,row:r});});});return out;}
-function render(){var years=getYears();if(years.indexOf(String(currentYear))<0)currentYear=years[0];var yt=document.getElementById('yearTabs');yt.innerHTML='';years.forEach(function(y){var b=document.createElement('button');b.className='ytab'+(String(y)===String(currentYear)?' active':'');b.textContent=fa('سال '+y);var lt=null;var isLong=false;b.addEventListener('touchstart',function(){isLong=false;lt=setTimeout(function(){isLong=true;showYearCtx(y,20,150);},550);},{passive:true});b.addEventListener('touchend',function(){if(lt)clearTimeout(lt);});b.addEventListener('click',function(){if(isLong){isLong=false;return;}currentYear=y;var ym=monthsOfYear(y);currentName=ym.length?ym[0].name:'';selectedIds={};render();});b.oncontextmenu=function(e){e.preventDefault();showYearCtx(y,e.clientX,e.clientY);};yt.appendChild(b);});var ya=document.createElement('button');ya.className='ytab';ya.textContent='＋ سال جدید';ya.onclick=function(){yearMode='new';document.getElementById('yearDlgTitle').textContent='سال جدید';document.getElementById('yearInput').value='';document.getElementById('yearDlg').showModal();};yt.appendChild(ya);var mt=document.getElementById('monthTabs');mt.innerHTML='';monthsOfYear(currentYear).forEach(function(m){var b2=document.createElement('button');b2.className='mtab'+(m.name===currentName?' active':'');b2.textContent=fa(m.name);b2.dataset.mname=m.name;setupMonthTab(b2);mt.appendChild(b2);});var ma=document.createElement('button');ma.className='mtab';ma.textContent='＋ ماه';ma.onclick=function(){openMonthDialog('new');};mt.appendChild(ma);var ml2=document.getElementById('monthNameList');if(ml2)ml2.innerHTML='';months.forEach(function(m){if(!ml2)return;var o=document.createElement('option');o.value=m.name;ml2.appendChild(o);});renderRows();}
+function render(){var years=getYears();if(years.indexOf(String(currentYear))<0)currentYear=years[0];var yt=document.getElementById('yearTabs');yt.innerHTML='';years.forEach(function(y){var b=document.createElement('button');b.className='ytab'+(String(y)===String(currentYear)?' active':'');b.textContent=fa('سال '+y);var lt=null;var isLong=false;b.addEventListener('touchstart',function(){isLong=false;lt=setTimeout(function(){isLong=true;showYearCtx(y,20,150);},550);},{passive:true});b.addEventListener('touchend',function(){if(lt)clearTimeout(lt);});b.addEventListener('click',function(){if(isLong){isLong=false;return;}currentYear=y;var ym=monthsOfYear(y);currentName=ym.length?ym[0].name:'';selectedIds={};render();});b.oncontextmenu=function(e){e.preventDefault();showYearCtx(y,e.clientX,e.clientY);};yt.appendChild(b);});var ya=document.createElement('button');ya.className='ytab';ya.textContent='＋ سال جدید';ya.onclick=function(){yearMode='new';document.getElementById('yearDlgTitle').textContent='سال جدید';document.getElementById('yearInput').value='';document.getElementById('yearDlg').showModal();};yt.appendChild(ya);var mt=document.getElementById('monthTabs');mt.innerHTML='';monthsOfYear(currentYear).forEach(function(m){var b2=document.createElement('button');b2.className='mtab'+(m.name===currentName?' active':'');b2.textContent=fa(m.name);b2.dataset.mname=m.name;setupMonthTab(b2);mt.appendChild(b2);});var ma=document.createElement('button');ma.className='mtab';ma.textContent='＋ ماه';ma.onclick=function(){openMonthDialog('new');};mt.appendChild(ma);renderRows();}
 function openMonthDialog(mode){var safeYear=String(currentYear||'1405');document.getElementById('dlg').dataset.mode='new';document.getElementById('dlgTitle').textContent='ماه جدید در سال '+fa(safeYear);document.getElementById('monthName').value='';document.getElementById('monthYear').value=safeYear;document.getElementById('dlg').showModal();setTimeout(function(){document.getElementById('monthName').focus();},100);}
 function setupMonthTab(b){
-b.addEventListener('pointerdown',function(e){if(e.button===2)return;dragSt={el:b,startX:e.clientX,startY:e.clientY,active:false};dragTimer=setTimeout(function(){if(!dragSt)return;dragSt.active=true;dragSt.el.classList.add('dragging');if(navigator.vibrate)navigator.vibrate(30);},300);});
+b.addEventListener('pointerdown',function(e){if(e.button===2)return;
+ if(e.pointerType==='mouse'){dragSt={el:b,startX:e.clientX,startY:e.clientY,active:false};dragTimer=setTimeout(function(){if(!dragSt)return;dragSt.active=true;dragSt.el.classList.add('dragging');},300);}
+ else{var lt=setTimeout(function(){showCtx(b.dataset.mname,e.clientX,e.clientY);},550);var end=function(){clearTimeout(lt);b.removeEventListener('pointerup',end);b.removeEventListener('pointercancel',end);};b.addEventListener('pointerup',end);b.addEventListener('pointercancel',end);}
+});
 b.addEventListener('pointermove',function(e){if(!dragSt||!dragSt.active)return;e.preventDefault();var tb=document.getElementById('monthTabs');var el=document.elementFromPoint(e.clientX,e.clientY);if(el&&el!==dragSt.el&&el.classList&&el.classList.contains('mtab')&&el.dataset.mname){var r=el.getBoundingClientRect();if(e.clientX>r.left+r.width/2&&el.nextSibling)tb.insertBefore(dragSt.el,el.nextSibling);else tb.insertBefore(dragSt.el,el);}});
-b.addEventListener('pointerup',function(e){clearTimeout(dragTimer);if(!dragSt)return;var st=dragSt;dragSt=null;if(st.active){st.el.classList.remove('dragging');applyTabOrder();}else{var dx=Math.abs(e.clientX-st.startX),dy=Math.abs(e.clientY-st.startY);if(dx<8&&dy<8){currentName=b.dataset.mname;selectedIds={};render();}}});
+b.addEventListener('pointerup',function(e){clearTimeout(dragTimer);if(!dragSt)return;var st=dragSt;dragSt=null;if(st.active){st.el.classList.remove('dragging');applyTabOrder();}else if(e.pointerType==='mouse'){var dx=Math.abs(e.clientX-st.startX),dy=Math.abs(e.clientY-st.startY);if(dx<8&&dy<8){currentName=b.dataset.mname;selectedIds={};render();}}});
 b.addEventListener('pointercancel',function(){clearTimeout(dragTimer);if(dragSt&&dragSt.el)dragSt.el.classList.remove('dragging');dragSt=null;});
 b.oncontextmenu=function(e){e.preventDefault();showCtx(b.dataset.mname,e.clientX,e.clientY);};}
 function applyTabOrder(){var tb=document.getElementById('monthTabs');var names=[].slice.call(tb.querySelectorAll('.mtab')).map(function(x){return x.dataset.mname;}).filter(Boolean);var others=months.filter(function(m){return String(m.year)!==String(currentYear);});var inYear=names.map(function(n){return monthsOfYear(currentYear).find(function(m){return m.name===n;});}).filter(Boolean);months=inYear.concat(others);months.forEach(function(m,i){m.seq=i+1;});persistSort();if(names.length)currentName=names[0];render();toast('ترتیب ذخیره شد ✅');}
@@ -301,16 +317,20 @@ var td4=document.createElement('td');var inp3=document.createElement('input');in
 var tdD=document.createElement('td');var del=document.createElement('button');del.className='rowdel';del.textContent='✕';del.onclick=function(){delRow(row.cid);};tdD.appendChild(del);tr.appendChild(tdD);
 r.appendChild(tr);});
 updateTotal();updateSelBar();}
-function openEditDlg(cid){var f=byId(cid);if(!f)return;editDlgCid=cid;var row=f.row;document.getElementById('edSubj').value=row.subject||'';document.getElementById('edAmt').value=row.amount?groupDigits(String(Math.round(row.amount))):'';document.getElementById('edDate').value=row.date?fa(row.date):'';document.getElementById('edBank').value=row.bank||'';document.getElementById('edNotes').value=row.notes||'';document.getElementById('editDlg').showModal();}
-function editDlgSave(){if(!editDlgCid)return;var f=byId(editDlgCid);if(!f)return;var row=f.row;row.subject=document.getElementById('edSubj').value;row.amount=Number(onlyDigits(document.getElementById('edAmt').value)||0);row.date=toLatinDigits(document.getElementById('edDate').value).trim();row.bank=document.getElementById('edBank').value;row.notes=document.getElementById('edNotes').value;document.getElementById('editDlg').close();dbUpdate(row);renderRows();toast('ذخیره شد ✅');}
+function openEditDlg(cid){var f=byId(cid);if(!f)return;editDlgCid=cid;var row=f.row;document.getElementById('edSubj').value=row.subject||'';document.getElementById('edAmt').value=row.amount?groupDigits(String(Math.round(row.amount))):'';document.getElementById('edDate').value=row.date?fa(row.date.replace(/\//g,'')):'';document.getElementById('edBank').value=row.bank||'';document.getElementById('edNotes').value=row.notes||'';document.getElementById('editDlg').showModal();}
+function editDlgSave(){if(!editDlgCid)return;var f=byId(editDlgCid);if(!f)return;var row=f.row;row.subject=document.getElementById('edSubj').value;row.amount=Number(onlyDigits(document.getElementById('edAmt').value)||0);
+var dRaw=toLatinDigits(document.getElementById('edDate').value).trim();
+if(dRaw){var dFixed=parseDate(dRaw);if(dFixed){row.date=dFixed;}else{toast('⚠️ تاریخ نامعتبر — مثال: ۱۴۰۵۰۶۰۱');document.getElementById('edDate').focus();return;}}
+else row.date='';
+row.bank=document.getElementById('edBank').value;row.notes=document.getElementById('edNotes').value;document.getElementById('editDlg').close();dbUpdate(row);renderRows();toast('ذخیره شد ✅');}
 function selRow(id,checked){if(checked)selectedIds[id]=true;else delete selectedIds[id];updateSelBar();}
 function queueUpdate(row){updateTotal();var k=row.cid||('noid_'+Math.random());clearTimeout(editTimers[k]);editTimers[k]=setTimeout(function(){dbUpdate(row);},700);}
 function editAmount(cid,inp){var f=byId(cid);if(!f)return;var d=onlyDigits(inp.value);inp.value=d?groupDigits(d):'';f.row.amount=Number(d||0);updateTotal();queueUpdate(f.row);}
 function editRow(cid,k,v){var f=byId(cid);if(!f)return;if(k==='date'){f.row[k]=toLatinDigits(v);}else f.row[k]=v;queueUpdate(f.row);}
 function editNote(cid){var f=byId(cid);if(!f)return;var v=prompt('توضیحات این ردیف:',f.row.notes||'');if(v===null)return;f.row.notes=v.trim();dbUpdate(f.row);renderRows();}
-function blurDate(cid,inp){var f=byId(cid);if(!f)return;var raw=toLatinDigits(inp.value).trim();if(!raw)return;var fixed=parseDate(raw);if(fixed){var faFixed=fa(fixed);if(inp.value!==faFixed){inp.value=faFixed;toast('تاریخ اصلاح شد: '+faFixed);}if(f.row.date!==fixed){f.row.date=fixed;dbUpdate(f.row);return;}}else{toast('⚠️ «'+inp.value+'» تاریخ معتبری نیست — مثال: ۱۴۰۵/۰۷/۰۶');}dbUpdate(f.row);}
-function addRow(){var m=cur();if(!m||!m.name){toast('اول ماه بساز');return;}var row={cid:uuid(),id:null,subject:'',amount:0,date:'',bank:'',notes:''};m.rows.push(row);renderRows();dbInsert(row).then(function(){renderRows();countQueue();});}
-function delRow(cid){var f=byId(cid);if(!f)return;var subj=f.row.subject||'(بدون موضوع)';if(!confirm('این ردیف حذف شود؟\n\n'+subj))return;f.month.rows=f.month.rows.filter(function(x){return String(x.cid)!==String(cid);});renderRows();dbDelete(cid);toast('حذف شد 🗑️');countQueue();}
+function blurDate(cid,inp){var f=byId(cid);if(!f)return;var raw=toLatinDigits(inp.value).trim();if(!raw)return;var fixed=parseDate(raw);if(fixed){var faFixed=fa(fixed);if(inp.value!==faFixed){inp.value=faFixed;toast('تاریخ: '+faFixed);}if(f.row.date!==fixed){f.row.date=fixed;dbUpdate(f.row);return;}}else{toast('⚠️ «'+inp.value+'» تاریخ معتبری نیست — مثال: ۱۴۰۵۰۶۰۱ یا ۱۴۰۵/۰۶/۰۱');}dbUpdate(f.row);}
+function addRow(){var m=cur();if(!m||!m.name){toast('اول ماه بساز');return;}var row={cid:uuid(),id:null,subject:'',amount:0,date:'',bank:'',notes:''};m.rows.push(row);renderRows();dbInsert(row).then(function(){renderRows();});}
+function delRow(cid){var f=byId(cid);if(!f)return;var subj=f.row.subject||'(بدون موضوع)';if(!confirm('این ردیف حذف شود؟\n\n'+subj))return;f.month.rows=f.month.rows.filter(function(x){return String(x.cid)!==String(cid);});renderRows();dbDelete(cid);toast('حذف شد 🗑️');}
 function updateTotal(){var m=cur();var t=0;if(m&&m.rows){for(var i=0;i<m.rows.length;i++){t+=Number(m.rows[i].amount||0);}}var te=document.getElementById('total');if(te)te.textContent=money(t);renderSummary();}
 function renderSummary(){var sr=document.getElementById('summaryRows');if(!sr)return;sr.innerHTML='';var g=0;months.forEach(function(mm){var tt=0;for(var k=0;k<mm.rows.length;k++){tt+=Number(mm.rows[k].amount||0);}g+=tt;sr.insertAdjacentHTML('beforeend','<tr><td>'+fa(mm.year+' / '+mm.name)+'</td><td class="amount">'+money(tt)+'</td><td class="amount">'+fa(mm.rows.length)+'</td></tr>');});var gt=document.getElementById('grandTotal');if(gt)gt.textContent=money(g);}
 function goPage(p){var arr=['expense','summary','settings'];for(var i=0;i<arr.length;i++){var x=arr[i];document.getElementById('page-'+x).classList.toggle('hidden',x!==p);document.getElementById('m-'+x).classList.toggle('on',x===p);}}
@@ -322,13 +342,27 @@ function exportData(){var out=[];months.forEach(function(m){m.rows.forEach(funct
 function exportCSV(){var csv='\uFEFF'+'سال,ماه,موضوع,مبلغ (ریال),تاریخ,بانک,توضیحات\n';months.forEach(function(m){m.rows.forEach(function(r){csv+='"'+m.year+'","'+m.name+'","'+(r.subject||'')+'",'+(r.amount||0)+',"'+(r.date||'')+'","'+(r.bank||'')+'","'+(r.notes||'').replace(/"/g,'""')+'"\n';});});dl(new Blob([csv],{type:'text/csv'}),'kharj-yar.csv');}
 function dl(blob,name){var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();toast('فایل ذخیره شد');}
 function openImport(){var m=cur();if(!m||!m.name){toast('اول ماه مقصد را بساز');return;}document.getElementById('impFile').value='';document.getElementById('importText').value='';document.getElementById('impStatus').textContent='';document.getElementById('impReport').classList.add('hidden');document.getElementById('impTargetLabel').textContent=fa(m.name+' — '+m.year);document.getElementById('impDlg').showModal();}
-function parseLineSmart(line,lineNo){var s=toLatinDigits(line).trim();if(!s)return null;if(/جمع\s*کل|total/i.test(s))return null;if(/^(شماره|ردیف|row)\b/i.test(s)&&/موضوع|مبلغ|تاریخ|بانک|date|amount/i.test(s))return null;var date='',bank='';var m=s.match(/(\d{2,4}\D\d{1,2}\D\d{1,2})\s*$/);if(m){date=parseDate(m[1])||'';s=s.slice(0,s.length-m[0].length);}else{m=s.match(/(\d{2,4}\D\d{1,2}\D\d{1,2})\s*[-–—:.،]?\s*([^\d]{1,25}?)\s*$/);if(m){date=parseDate(m[1])||'';bank=m[2].replace(/[-–—:.،_\s]+$/,'').replace(/^[-–—:.،_\s]+/,'').trim();s=s.slice(0,s.length-m[0].length);}}
+function parseLineSmart(line,lineNo){var s=toLatinDigits(line).trim();if(!s)return null;if(/جمع\s*کل|total/i.test(s))return null;if(/^(شماره|ردیف|row)\b/i.test(s)&&/موضوع|مبلغ|تاریخ|بانک|date|amount/i.test(s))return null;var date='',bank='',dayWarn=false;
+var m=s.match(/(\d{3,4}\D\d{1,2}\D\d{1,2})\s*$/);
+if(m){date=parseDate(m[1])||'';s=s.slice(0,s.length-m[0].length);}
+else{m=s.match(/(\d{3,4})\s*[./-]\s*(\d{1,4})\s*$/);
+ if(m){var yy=Number(m[1]);if(yy<200)yy+=1400;var rest=m[2];
+  if(yy>=1200&&yy<=1500&&rest.length>=2&&rest.length<=4){
+   var mm,dd;
+   if(rest.length===2){mm=Number(rest);dd=1;dayWarn=true;}
+   else if(rest.length===3){mm=Number(rest.slice(0,1));dd=Number(rest.slice(1));}
+   else{mm=Number(rest.slice(0,2));dd=Number(rest.slice(2));}
+   if(mm>=1&&mm<=12&&dd>=1&&dd<=31){date=yy+'/'+String(mm).padStart(2,'0')+'/'+String(dd).padStart(2,'0');s=s.slice(0,s.length-m[0].length);}
+  }
+ }
+ if(!date){m=s.match(/(\d{2,4}\D\d{1,2}\D\d{1,2})\s*[-–—:.،]?\s*([^\d]{1,25}?)\s*$/);if(m){date=parseDate(m[1])||'';bank=m[2].replace(/[-–—:.،_\s]+$/,'').replace(/^[-–—:.،_\s]+/,'').trim();s=s.slice(0,s.length-m[0].length);}}
+}
 s=s.trim().replace(/(:|-|–|—|_|\.)+$/,'');s=s.replace(/^\d+\s*(:|-|–|—|\.|_|\))\s*/,'').trim();
 var amount=0,okAmt=false;s=s.replace(/(\d(?:\d|\.|,|،|٬)+|\d)\s*$/,function(g){var d=g.replace(/\D/g,'');var n=Number(d);if(n>0){amount=n;okAmt=true;return '';}return g;});
-if(!okAmt)return{ok:false,reason:'مبلغی پیدا نشد'};var subject=s.trim().replace(/(:|-|–|—|_|\.)+$/,'').trim();if(!subject)return{ok:false,reason:'موضوعی پیدا نشد'};return{ok:true,subject:subject,amount:amount,date:date,bank:bank,lineNo:lineNo};}
-function parseTextTable(text){var lines=toLatinDigits(text).split(/\r?\n/);var records=[],bad=[];var noDate=0;lines.forEach(function(line,i){var l=line.trim();if(!l)return;var r=parseLineSmart(l,i+1);if(r===null)return;if(!r.ok){bad.push('خط '+(i+1)+': '+r.reason);return;}if(!r.date)noDate++;records.push({subject:r.subject,amount:r.amount,date:r.date,bank:r.bank||''});});return{records:records,bad:bad,noDate:noDate};}
+if(!okAmt)return{ok:false,reason:'مبلغی پیدا نشد'};var subject=s.trim().replace(/(:|-|–|—|_|\.)+$/,'').trim();if(!subject)return{ok:false,reason:'موضوعی پیدا نشد'};return{ok:true,subject:subject,amount:amount,date:date,bank:bank,lineNo:lineNo,dayWarn:dayWarn};}
+function parseTextTable(text){var lines=toLatinDigits(text).split(/\r?\n/);var records=[],bad=[];var noDate=0;lines.forEach(function(line,i){var l=line.trim();if(!l)return;var r=parseLineSmart(l,i+1);if(r===null)return;if(!r.ok){bad.push('خط '+(i+1)+': '+r.reason);return;}if(!r.date)noDate++;if(r.dayWarn)bad.push('خط '+(i+1)+': روز مشخص نبود — روز ۱ فرض شد ('+r.date+')');records.push({subject:r.subject,amount:r.amount,date:r.date,bank:r.bank||''});});return{records:records,bad:bad,noDate:noDate};}
 function doImport(){var st=document.getElementById('impStatus');st.textContent='⏳ در حال خواندن…';document.getElementById('impReport').classList.add('hidden');var parsed=null;var fInput=document.getElementById('impFile');var file=fInput&&fInput.files&&fInput.files[0];var txt=document.getElementById('importText').value.trim();
-var go=function(){var records=parsed.records.filter(function(r){return r.subject||r.amount||r.date;});pendingRecords=records;pendingParsed={noDate:parsed.noDate,bad:parsed.bad};if(!records.length){st.textContent='❌ هیچ ردیفی شناسایی نشد'+(parsed.bad.length?'\n'+parsed.bad.slice(0,8).join('\n'):'');return;}if(parsed.bad.length){st.textContent=fa(records.length)+' ردیف صحیح شناسایی شد، '+fa(parsed.bad.length)+' خط رد شد:';document.getElementById('impReportBody').textContent=parsed.bad.slice(0,10).join('\n')+(parsed.bad.length>10?'\n… و '+(parsed.bad.length-10)+' مورد دیگر':'');document.getElementById('impReport').classList.remove('hidden');return;}proceedImport();};
+var go=function(){var records=parsed.records.filter(function(r){return r.subject||r.amount||r.date;});pendingRecords=records;pendingParsed={noDate:parsed.noDate,bad:parsed.bad};if(!records.length){st.textContent='❌ هیچ ردیفی شناسایی نشد'+(parsed.bad.length?'\n'+parsed.bad.slice(0,8).join('\n'):'');return;}if(parsed.bad.length){st.textContent=fa(records.length)+' ردیف صحیح شناسایی شد'+(parsed.bad.length?' — '+fa(parsed.bad.length)+' یادداشت:':'');document.getElementById('impReportBody').textContent=parsed.bad.slice(0,12).join('\n')+(parsed.bad.length>12?'\n… و '+(parsed.bad.length-12)+' مورد دیگر':'');document.getElementById('impReport').classList.remove('hidden');return;}proceedImport();};
 try{
 if(file){var ext=(file.name.split('.').pop()||'').toLowerCase();
 if(ext==='docx'){if(typeof mammoth==='undefined'){st.textContent='❌ کتابخانه ورد لود نشد — متن را پیست کن';return;}file.arrayBuffer().then(function(ab){return mammoth.extractRawText({arrayBuffer:ab});}).then(function(res){parsed=parseTextTable(res.value);go();}).catch(function(e){st.textContent='❌ خطا: '+e.message;});return;}
